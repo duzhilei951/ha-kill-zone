@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>大模型斩杀线与智能选型工作台</title>
+<link rel="stylesheet" href="/__cherry/theme.css" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+         color: #e2e8f0; min-height: 100vh;
+         background: radial-gradient(1200px 600px at 15% -10%, rgba(59,130,246,.18), transparent 60%),
+                     radial-gradient(1000px 500px at 100% 0%, rgba(167,139,250,.16), transparent 55%),
+                     linear-gradient(160deg, #0b1220 0%, #111a30 55%, #0d1526 100%);
+         padding: 26px 22px 40px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header h1 { font-size: 26px; letter-spacing: .5px; margin-bottom: 8px;
+              background: linear-gradient(90deg, #f8fafc, #93c5fd 55%, #c4b5fd);
+              -webkit-background-clip: text; background-clip: text; color: transparent; }
+  header .sub { color: #7d8aa3; font-size: 13px; margin-bottom: 16px; }
+  .info { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13px; color: #cbd5e1;
+          background: rgba(255,255,255,.04); border: 1px solid rgba(148,163,184,.16);
+          border-radius: 12px; padding: 11px 18px; margin-bottom: 18px;
+          backdrop-filter: blur(8px); }
+  .info b { color: #fbbf24; }
+  .chart-wrap { background: rgba(255,255,255,.035); border: 1px solid rgba(148,163,184,.16);
+                border-radius: 16px; padding: 18px; position: relative;
+                box-shadow: 0 18px 50px rgba(0,0,0,.35); backdrop-filter: blur(8px); }
+  .chart-wrap svg { display: block; width: 100%; height: auto; }
+  .axis { font-size: 12px; fill: #64748b; }
+  .dot-label { font-size: 11px; fill: #cbd5e1; pointer-events: none; }
+  .anchor-star { font-size: 17px; fill: #fbbf24; pointer-events: none;
+                 filter: url(#glow); }
+  .anchor-tag { font-size: 11px; fill: #fbbf24; font-weight: 600; pointer-events: none; }
+  .kill-line-label { font-size: 12px; fill: #fb7185; font-weight: 600; pointer-events: none; }
+  .dot { cursor: pointer; transition: r .12s, stroke-width .12s; }
+  .dot.anchor { stroke: #fbbf24; stroke-width: 2.5; filter: url(#glow); }
+  .dot.locate { stroke: #22d3ee; stroke-width: 2.5; filter: url(#glow); }
+  .dot.hl { stroke: #f8fafc; stroke-width: 2.5; filter: url(#glow); }
+  .locate-tag { font-size: 12px; fill: #22d3ee; font-weight: 600; pointer-events: none; }
+  .dot-label-locate { fill: #67e8f9; font-weight: 600; }
+  .badge-custom { display: inline-block; font-size: 10px; color: #fbbf24; border: 1px solid rgba(251,191,36,.45);
+                  border-radius: 6px; padding: 0 5px; margin-left: 4px; vertical-align: 1px; }
+  .badge-est { display: inline-block; font-size: 10px; color: #f87171; border: 1px solid rgba(248,113,113,.45);
+               border-radius: 6px; padding: 0 5px; margin-left: 2px; vertical-align: 1px; }
+  .badge-tool { display: inline-block; font-size: 10px; color: #34d399; border: 1px solid rgba(52,211,153,.45);
+                border-radius: 6px; padding: 0 5px; margin-left: 3px; vertical-align: 1px; }
+  .badge-ctx { display: inline-block; font-size: 10px; color: #38bdf8; border: 1px solid rgba(56,189,248,.45);
+               border-radius: 6px; padding: 0 5px; margin-left: 3px; vertical-align: 1px; }
+  tr.locate-row td { background: rgba(34,211,238,.12); }
+  .panel { margin-top: 26px; background: rgba(255,255,255,.035); border: 1px solid rgba(148,163,184,.16);
+           border-radius: 16px; padding: 18px 20px; box-shadow: 0 12px 34px rgba(0,0,0,.25); }
+  .panel h2 { margin-bottom: 6px; }
+  .panel-hint { font-size: 13px; color: #94a3b8; margin-bottom: 14px; }
+  .panel-grid { display: grid; grid-template-columns: 350px 1fr; gap: 18px; }
+  .panel-form { display: flex; flex-direction: column; gap: 8px; }
+  .f-label { font-size: 12px; color: #cbd5e1; font-weight: 600; margin-top: 4px; }
+  .panel-form textarea, .panel-form input[type=number] {
+      background: rgba(2,6,23,.6); color: #e2e8f0; border: 1px solid rgba(148,163,184,.25);
+      border-radius: 10px; padding: 9px 12px; font-size: 13px; font-family: inherit;
+      resize: vertical; outline: none; }
+  .panel-form textarea:focus, .panel-form input[type=number]:focus { border-color: #38bdf8; }
+  .task-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px;
+          background: rgba(255,255,255,.05); border: 1px solid rgba(148,163,184,.2);
+          border-radius: 999px; padding: 5px 11px; color: #cbd5e1; user-select: none; }
+  .chip:has(input:checked) { background: rgba(52,211,153,.14); border-color: rgba(52,211,153,.5); color: #a7f3d0; }
+  .chip input { display: none; }
+  .chip-ic { font-size: 13px; }
+  .chip em { font-style: normal; color: #64748b; font-size: 10px; }
+  .intensity-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .int-opt { font-size: 12px; cursor: pointer; background: rgba(255,255,255,.05);
+             border: 1px solid rgba(148,163,184,.2); border-radius: 999px; padding: 5px 12px; color: #cbd5e1; }
+  .int-opt input { display: none; }
+  .int-opt:has(input:checked) { background: rgba(59,130,246,.18); border-color: rgba(59,130,246,.55); color: #bfdbfe; }
+  #rec-btn { margin-top: 10px; background: linear-gradient(90deg, #34d399, #22d3ee); border: none;
+             color: #06281e; font-weight: 700; font-size: 14px; border-radius: 10px; padding: 11px 0;
+             cursor: pointer; letter-spacing: 1px; }
+  #rec-btn:hover { filter: brightness(1.12); }
+  .panel-result { background: rgba(2,6,23,.45); border: 1px solid rgba(148,163,184,.16);
+                  border-radius: 12px; padding: 14px 16px; overflow: auto; }
+  .rec-empty { color: #64748b; font-size: 13px; line-height: 2; }
+  .rec-sum { font-size: 13px; color: #cbd5e1; margin-bottom: 10px; }
+  .rec-tasks { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+  .rec-task { background: rgba(255,255,255,.04); border: 1px solid rgba(148,163,184,.14);
+              border-radius: 10px; padding: 10px 12px; }
+  .rec-task-head { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #cbd5e1; }
+  .rec-task-head b { color: #f1f5f9; }
+  .req { margin-left: auto; font-size: 10px; color: #64748b; white-space: nowrap; }
+  .rec-model { margin: 7px 0 5px; font-size: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .rec-model b { color: #f8fafc; }
+  .rec-meta { font-size: 11px; color: #94a3b8; }
+  .rec-cost { font-size: 12px; color: #94a3b8; line-height: 1.6; }
+  .rec-cost b { color: #34d399; }
+  .budget-bar-wrap { margin-top: 12px; }
+  .budget-label { font-size: 13px; color: #cbd5e1; margin-bottom: 6px; }
+  .budget-label b { color: #34d399; font-size: 15px; }
+  .budget-bar { height: 10px; border-radius: 999px; background: rgba(148,163,184,.15); overflow: hidden; }
+  .budget-fill { height: 100%; background: linear-gradient(90deg, #34d399, #22d3ee); border-radius: 999px;
+                 transition: width .3s; }
+  .budget-fill.over { background: linear-gradient(90deg, #f87171, #fb7185); }
+  .budget-warn { margin-top: 7px; font-size: 12px; color: #fca5a5; }
+  .rec-duo { margin-top: 12px; font-size: 13px; color: #cbd5e1; background: rgba(52,211,153,.08);
+             border: 1px solid rgba(52,211,153,.25); border-radius: 10px; padding: 9px 12px; line-height: 1.7; }
+  .rec-duo b { color: #f8fafc; }
+  .lg-rec { color: #4ade80; font-weight: 600; }
+  .dot.rec { stroke: #4ade80; stroke-width: 2.5; filter: url(#glow); }
+  @media (max-width: 860px) { .panel-grid { grid-template-columns: 1fr; } }
+  #tooltip { position: fixed; z-index: 99; display: none; pointer-events: none;
+             background: rgba(2,6,23,.95); color: #e2e8f0; font-size: 12px;
+             border: 1px solid rgba(148,163,184,.25); border-radius: 10px;
+             padding: 11px 13px; max-width: 300px; line-height: 1.6;
+             box-shadow: 0 12px 30px rgba(0,0,0,.5); }
+  #tooltip b { color: #f8fafc; }
+  #tooltip .tt-zone { display: inline-block; padding: 1px 8px; border-radius: 8px;
+                      font-size: 11px; margin-left: 6px; }
+  .stats { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 6px; }
+  .stat { background: rgba(255,255,255,.04); border: 1px solid rgba(148,163,184,.14);
+          border-radius: 10px; padding: 8px 14px; font-size: 13px; color: #cbd5e1;
+          display: flex; align-items: center; gap: 7px; }
+  .stat b { font-size: 17px; color: #f8fafc; }
+  .sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+        box-shadow: 0 0 8px currentColor; }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px;
+          background: rgba(255,255,255,.03); border: 1px solid rgba(148,163,184,.14);
+          border-radius: 12px; overflow: hidden; font-size: 13px; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid rgba(148,163,184,.10); }
+  th { background: rgba(255,255,255,.05); color: #cbd5e1; font-weight: 600; }
+  tr { cursor: pointer; }
+  tr:hover td { background: rgba(59,130,246,.12); }
+  td.dim { color: #7d8aa3; }
+  .zone-badge { border: 1px solid; border-radius: 8px; padding: 1px 8px; font-size: 12px; }
+  section h2 { font-size: 19px; margin: 34px 0 14px; letter-spacing: .5px;
+               background: linear-gradient(90deg, #f1f5f9, #93c5fd);
+               -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .advice { margin-top: 34px; }
+  .advice-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+                 gap: 14px; }
+  .advice-card { background: rgba(255,255,255,.04); border: 1px solid rgba(148,163,184,.16);
+                 border-radius: 14px; padding: 16px 18px;
+                 box-shadow: 0 12px 34px rgba(0,0,0,.25); }
+  .advice-head { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
+  .advice-tag { display: inline-block; width: 26px; height: 26px; border-radius: 8px;
+                color: #0b1220; font-weight: 700; text-align: center; line-height: 26px;
+                font-size: 13px; }
+  .advice-head h3 { font-size: 15px; color: #f1f5f9; }
+  .advice-card ul { list-style: none; }
+  .advice-card li { padding: 9px 0; border-bottom: 1px dashed rgba(148,163,184,.14); }
+  .advice-card li:last-child { border-bottom: none; }
+  .rec-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .m-name { font-size: 14px; color: #f8fafc; }
+  .m-role { font-size: 11px; border: 1px solid; border-radius: 8px; padding: 1px 8px; }
+  .rec-reason { font-size: 12px; color: #94a3b8; margin-top: 4px; line-height: 1.6; }
+  .rec-reason em { font-style: normal; color: #64748b; }
+  .advice-card li.empty { color: #64748b; font-size: 12px; }
+  .budget-note { margin-top: 14px; font-size: 13px; color: #cbd5e1;
+                 background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.25);
+                 border-radius: 10px; padding: 10px 14px; }
+  .explain { margin-top: 20px; background: rgba(255,255,255,.03);
+             border: 1px solid rgba(148,163,184,.14); border-radius: 14px; padding: 18px 20px; }
+  .explain h2 { margin: 0 0 14px; font-size: 18px; }
+  .explain ol { list-style: none; counter-reset: ex; }
+  .explain li { counter-increment: ex; padding: 9px 0 9px 30px; position: relative;
+                font-size: 13px; color: #cbd5e1; line-height: 1.7; border-bottom: 1px dashed rgba(148,163,184,.12); }
+  .explain li:last-child { border-bottom: none; }
+  .explain li::before { content: counter(ex, decimal-leading-zero); position: absolute;
+                        left: 0; top: 10px; width: 20px; height: 20px; border-radius: 6px;
+                        background: rgba(59,130,246,.18); color: #93c5fd; font-size: 11px;
+                        text-align: center; line-height: 20px; }
+  .explain li b { color: #f1f5f9; }
+  .explain li p { display: inline; }
+  .explain code { background: rgba(148,163,184,.15); padding: 1px 6px; border-radius: 5px;
+                  font-size: 12px; color: #93c5fd; }
+  .explain-foot { margin-top: 14px; font-size: 12px; color: #64748b; }
+  @media (max-width: 720px) { body { padding: 14px 10px; } header h1 { font-size: 20px; } }
+</style>
+<style>
+  /* 适配 Cherry Studio 原生与增强样式 */
+  :root {
+    --primary: #38bdf8;
+    --primary-glow: rgba(56, 189, 248, 0.35);
+    --card-bg: rgba(15, 23, 42, 0.75);
+    --border-color: rgba(148, 163, 184, 0.18);
+  }
+
+  body {
+    background-attachment: fixed;
+    padding-bottom: 60px;
+  }
+
+  .top-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .btn-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.06);
+    color: #e2e8f0;
+    transition: all 0.2s;
+  }
+  .btn-action:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: var(--primary);
+  }
+  .btn-action.primary {
+    background: linear-gradient(90deg, #38bdf8, #818cf8);
+    color: #0b1329;
+    border: none;
+  }
+
+  /* AI 诊断面板 */
+  .ai-diag-panel {
+    margin-top: 20px;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 16px;
+    padding: 18px 22px;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.3);
+    display: none;
+  }
+  .ai-diag-panel.show { display: block; }
+  .ai-diag-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .ai-diag-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #38bdf8;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ai-diag-content {
+    font-size: 13px;
+    line-height: 1.8;
+    color: #cbd5e1;
+    max-height: 450px;
+    overflow-y: auto;
+  }
+
+  /* Markdown 样式 */
+  .ai-diag-content h1, .ai-diag-content h2, .ai-diag-content h3 {
+    color: #f8fafc;
+    margin: 14px 0 8px;
+    font-size: 14px;
+  }
+  .ai-diag-content ul, .ai-diag-content ol {
+    padding-left: 20px;
+    margin-bottom: 10px;
+  }
+  .ai-diag-content li { margin-bottom: 4px; }
+  .ai-diag-content blockquote {
+    border-left: 3px solid #38bdf8;
+    padding-left: 10px;
+    color: #94a3b8;
+    margin: 10px 0;
+  }
+  .ai-diag-content strong { color: #38bdf8; }
+
+  /* 补录模态框 */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: #0f172a;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 16px;
+    width: 90%;
+    max-width: 480px;
+    padding: 24px;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+  }
+  .modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .modal-head h3 { font-size: 16px; color: #f8fafc; }
+  .modal-close { cursor: pointer; color: #94a3b8; font-size: 18px; border: none; background: none; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 6px; }
+  .form-group input, .form-group select {
+    width: 100%;
+    background: rgba(2, 6, 23, 0.7);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 8px;
+    padding: 9px 12px;
+    color: #f8fafc;
+    font-size: 13px;
+    outline: none;
+  }
+  .form-group input:focus { border-color: #38bdf8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header style="display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+    <div>
+      <h1>大模型斩杀线 · 智能选型工作台</h1>
+      <div class="sub">以当前高性价比走量模型为锚点，实时推演大模型能力与成本分布，科学规划算力支出</div>
+    </div>
+    <div class="top-actions">
+      <button id="btnOpenAddModal" class="btn-action"><span>➕</span> 补录新模型</button>
+      <button id="btnExportPlan" class="btn-action"><span>📋</span> 复制选型全案</button>
+    </div>
+  </header>
+
+  <div class="info">
+    <div>当前锚点：<b>Gemini 3.8 Flash</b>（能力 80.7 分 · 输入 ¥5.03/M）</div>
+    <div>模型总数：<b id="total-models-count">37</b> 款</div>
+    <div>斩杀线规则：以锚点为界，<b>向右代表更贵，向下代表更弱</b>，右下方即为斩杀区</div>
+  </div>
+
+  <div class="chart-wrap">
+    <svg id="chart" width="1120" height="660" viewBox="0 0 1120 660" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Microsoft YaHei, sans-serif"><defs><filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><clipPath id="plotclip"><rect x="78" y="46" width="1002" height="558"/></clipPath></defs><line x1="78.000000" y1="604.000000" x2="1080.000000" y2="604.000000" stroke="rgba(148,163,184,0.10)" stroke-width="1"/><text x="68.000000" y="608.000000" class="axis">0</text><line x1="78.000000" y1="492.400000" x2="1080.000000" y2="492.400000" stroke="rgba(148,163,184,0.10)" stroke-width="1"/><text x="68.000000" y="496.400000" class="axis">20</text><line x1="78.000000" y1="380.800000" x2="1080.000000" y2="380.800000" stroke="rgba(148,163,184,0.10)" stroke-width="1"/><text x="68.000000" y="384.800000" class="axis">40</text><line x1="78.000000" y1="269.200000" x2="1080.000000" y2="269.200000" stroke="rgba(148,163,184,0.10)" stroke-width="1"/><text x="68.000000" y="273.200000" class="axis">60</text><line x1="78.000000" y1="157.600000" x2="1080.000000" y2="157.600000" stroke="rgba(148,163,184,0.10)" stroke-width="1"/><text x="68.000000" y="161.600000" class="axis">80</text><line x1="78.000000" y1="46.000000" x2="1080.000000" y2="46.000000" stroke="rgba(148,163,184,0.10)" stroke-width="1"/><text x="68.000000" y="50.000000" class="axis">100</text><line x1="224.368875" y1="46.000000" x2="224.368875" y2="604.000000" stroke="rgba(148,163,184,0.10)" stroke-width="1"/><text x="224.368875" y="624.000000" class="axis" text-anchor="middle">1</text><line x1="351.605711" y1="46.000000" x2="351.605711" y2="604.000000" stroke="rgba(148,163,184,0.10)" stroke-width="1"/><text x="351.605711" y="624.000000" class="axis" text-anchor="middle">2</text><line x1="426.034490" y1="46.000000" x2="426.034490" y2="604.000000" stroke="rgba(148,163,184,0.10)" stroke-width="1"/><text x="426.034490" y="624.000000" class="axis" text-anchor="middle">3</text><line x1="519.803660" y1="46.000000" x2="519.803660" y2="604.000000" stroke="rgba(148,163,184,0.10)" stroke-width="1"/><text x="519.803660" y="624.000000" class="axis" text-anchor="middle">5</text><line x1="647.040497" y1="46.000000" x2="647.040497" y2="604.000000" stroke="rgba(148,163,184,0.10)" stroke-width="1"/><text x="647.040497" y="624.000000" class="axis" text-anchor="middle">10</text><line x1="774.277333" y1="46.000000" x2="774.277333" y2="604.000000" stroke="rgba(148,163,184,0.10)" stroke-width="1"/><text x="774.277333" y="624.000000" class="axis" text-anchor="middle">20</text><line x1="848.706111" y1="46.000000" x2="848.706111" y2="604.000000" stroke="rgba(148,163,184,0.10)" stroke-width="1"/><text x="848.706111" y="624.000000" class="axis" text-anchor="middle">30</text><line x1="942.475282" y1="46.000000" x2="942.475282" y2="604.000000" stroke="rgba(148,163,184,0.10)" stroke-width="1"/><text x="942.475282" y="624.000000" class="axis" text-anchor="middle">50</text><line x1="1004.239456" y1="46.000000" x2="1004.239456" y2="604.000000" stroke="rgba(148,163,184,0.10)" stroke-width="1"/><text x="1004.239456" y="624.000000" class="axis" text-anchor="middle">70</text><line x1="1069.712119" y1="46.000000" x2="1069.712119" y2="604.000000" stroke="rgba(148,163,184,0.10)" stroke-width="1"/><text x="1069.712119" y="624.000000" class="axis" text-anchor="middle">100</text><line x1="78.000000" y1="46.000000" x2="78.000000" y2="604.000000" stroke="#64748b" stroke-width="1.5"/><line x1="78.000000" y1="604.000000" x2="1080.000000" y2="604.000000" stroke="#64748b" stroke-width="1.5"/><path d="M520.9,153.7 L1080.0,153.7 L1080.0,604.0 L520.9,604.0 Z" fill="rgba(248,113,113,0.05)" clip-path="url(#plotclip)"/><path d="M520.9,153.7 L1080.0,153.7 M520.9,153.7 L520.9,604.0" fill="none" stroke="#fb7185" stroke-width="2.5" stroke-dasharray="8,5" stroke-linecap="round" clip-path="url(#plotclip)"/><text x="90.000000" y="62.000000" class="kill-line-label">斩杀线 · 锚点右下方为斩杀区</text><circle data-i="0" class="dot zone-D" cx="996.500000" cy="66.088000" r="7.000000" fill="#a78bfa" stroke="none" stroke-width="0.000000"/><circle data-i="1" class="dot zone-D" cx="996.500000" cy="81.712000" r="7.000000" fill="#a78bfa" stroke="none" stroke-width="0.000000"/><circle data-i="2" class="dot zone-D" cx="996.500000" cy="83.386000" r="7.000000" fill="#a78bfa" stroke="none" stroke-width="0.000000"/><circle data-i="3" class="dot zone-D" cx="869.235809" cy="87.292000" r="7.000000" fill="#a78bfa" stroke="none" stroke-width="0.000000"/><circle data-i="4" class="dot zone-D" cx="996.500000" cy="91.756000" r="7.000000" fill="#a78bfa" stroke="none" stroke-width="0.000000"/><circle data-i="5" class="dot zone-D" cx="869.235809" cy="126.352000" r="7.000000" fill="#a78bfa" stroke="none" stroke-width="0.000000"/><circle data-i="6" class="dot zone-D" cx="701.037860" cy="147.556000" r="7.000000" fill="#a78bfa" stroke="none" stroke-width="0.000000"/><circle data-i="7" class="dot zone-D" cx="614.816841" cy="149.230000" r="7.000000" fill="#a78bfa" stroke="none" stroke-width="0.000000"/><circle data-i="8" class="dot zone-C" cx="161.500000" cy="149.230000" r="7.000000" fill="#34d399" stroke="none" stroke-width="0.000000"/><circle data-i="9" class="dot zone-D" cx="774.277333" cy="153.694000" r="7.000000" fill="#a78bfa" stroke="none" stroke-width="0.000000"/><circle data-i="10" class="dot zone-C anchor" cx="520.901753" cy="153.694000" r="9.000000" fill="#34d399" stroke="#fbbf24" stroke-width="2.500000"/><circle data-i="11" class="dot zone-X" cx="635.487018" cy="162.622000" r="7.000000" fill="#fb7185" stroke="none" stroke-width="0.000000"/><circle data-i="12" class="dot zone-B" cx="520.901753" cy="170.434000" r="7.000000" fill="#38bdf8" stroke="none" stroke-width="0.000000"/><circle data-i="13" class="dot zone-B" cx="183.407763" cy="175.456000" r="7.000000" fill="#38bdf8" stroke="none" stroke-width="0.000000"/><circle data-i="14" class="dot zone-X" cx="553.271326" cy="175.456000" r="7.000000" fill="#fb7185" stroke="none" stroke-width="0.000000"/><circle data-i="15" class="dot zone-X" cx="553.271326" cy="182.710000" r="7.000000" fill="#fb7185" stroke="none" stroke-width="0.000000"/><circle data-i="16" class="dot zone-X" cx="701.037860" cy="190.522000" r="7.000000" fill="#fb7185" stroke="none" stroke-width="0.000000"/><circle data-i="17" class="dot zone-X" cx="869.235809" cy="202.798000" r="7.000000" fill="#fb7185" stroke="none" stroke-width="0.000000"/><circle data-i="18" class="dot zone-X" cx="614.816841" cy="203.356000" r="7.000000" fill="#fb7185" stroke="none" stroke-width="0.000000"/><circle data-i="19" class="dot zone-X" cx="680.508163" cy="210.610000" r="7.000000" fill="#fb7185" stroke="none" stroke-width="0.000000"/><circle data-i="20" class="dot zone-X" cx="869.235809" cy="213.400000" r="7.000000" fill="#fb7185" stroke="none" stroke-width="0.000000"/><circle data-i="21" class="dot zone-B" cx="426.034490" cy="217.864000" r="7.000000" fill="#38bdf8" stroke="none" stroke-width="0.000000"/><circle data-i="22" class="dot zone-X" cx="869.235809" cy="224.002000" r="7.000000" fill="#fb7185" stroke="none" stroke-width="0.000000"/><circle data-i="23" class="dot zone-B" cx="183.407763" cy="244.648000" r="7.000000" fill="#38bdf8" stroke="none" stroke-width="0.000000"/><circle data-i="24" class="dot zone-X" cx="742.053678" cy="269.758000" r="7.000000" fill="#fb7185" stroke="none" stroke-width="0.000000"/><circle data-i="25" class="dot zone-X" cx="614.816841" cy="288.730000" r="7.000000" fill="#fb7185" stroke="none" stroke-width="0.000000"/><circle data-i="26" class="dot zone-X" cx="701.037860" cy="289.846000" r="7.000000" fill="#fb7185" stroke="none" stroke-width="0.000000"/><circle data-i="27" class="dot zone-X" cx="701.037860" cy="305.470000" r="7.000000" fill="#fb7185" stroke="none" stroke-width="0.000000"/><circle data-i="28" class="dot zone-X" cx="627.700104" cy="309.376000" r="7.000000" fill="#fb7185" stroke="none" stroke-width="0.000000"/><circle data-i="29" class="dot zone-B" cx="278.092466" cy="321.652000" r="7.000000" fill="#38bdf8" stroke="none" stroke-width="0.000000"/><circle data-i="30" class="dot zone-X" cx="869.235809" cy="330.580000" r="7.000000" fill="#fb7185" stroke="none" stroke-width="0.000000"/><circle data-i="31" class="dot zone-B" cx="520.901753" cy="332.254000" r="7.000000" fill="#38bdf8" stroke="none" stroke-width="0.000000"/><circle data-i="32" class="dot zone-X" cx="606.079384" cy="335.602000" r="7.000000" fill="#fb7185" stroke="none" stroke-width="0.000000"/><circle data-i="33" class="dot zone-X" cx="648.320968" cy="344.530000" r="7.000000" fill="#fb7185" stroke="none" stroke-width="0.000000"/><circle data-i="34" class="dot zone-B" cx="426.034490" cy="381.916000" r="7.000000" fill="#38bdf8" stroke="none" stroke-width="0.000000"/><circle data-i="35" class="dot zone-B" cx="298.797653" cy="381.916000" r="7.000000" fill="#38bdf8" stroke="none" stroke-width="0.000000"/><circle data-i="36" class="dot zone-B" cx="426.034490" cy="381.916000" r="7.000000" fill="#38bdf8" stroke="none" stroke-width="0.000000"/><text x="520.901753" y="137.694000" text-anchor="middle" class="anchor-star">★</text><text x="520.901753" y="179.694000" text-anchor="middle" class="anchor-tag">锚点（走量基准）</text><text x="520.901753" y="141.694000" class="dot-label" text-anchor="middle">★ Gemini 3.8 Flash</text></svg>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span class="sw" style="color:#34d399"></span>安全区（强且便宜）：<b>3</b></div>
+    <div class="stat"><span class="sw" style="color:#38bdf8"></span>走量区（弱但便宜）：<b>8</b></div>
+    <div class="stat"><span class="sw" style="color:#a78bfa"></span>旗舰区（强但贵）：<b>9</b></div>
+    <div class="stat"><span class="sw" style="color:#fb7185"></span>斩杀区（弱且更贵）：<b>17</b></div>
+  </div>
+
+  <!-- 画像推荐面板 -->
+  <section class="panel" id="rec-panel">
+    <h2>我的专属推荐 · 任务画像与预算测算</h2>
+    <div class="panel-hint">输入日常工作或勾选任务，配置月度算力预算，引擎将自动规划最省且达标的模型组合。</div>
+    <div class="panel-grid">
+      <div class="panel-form">
+        <div class="f-label">一句话描述你的日常工作（支持自动识别任务）</div>
+        <textarea id="work-desc" rows="3" placeholder="例如：我是后端开发，平时要写代码和写点技术文章..."></textarea>
+
+        <div class="f-label">关注的任务类型（可多选）</div>
+        <div class="task-chips" id="task-chips"></div>
+
+        <div class="f-label">月度使用强度</div>
+        <div class="intensity-opts" id="intensity-opts"></div>
+
+        <div class="f-label">月度预算上限（元）</div>
+        <input type="number" id="budget-input" value="100" min="5" max="5000" step="5">
+
+        <button id="rec-btn">⚡ 规划最佳模型搭配</button>
+      </div>
+
+      <div class="panel-result" id="rec-result">
+        <div class="rec-empty">在左侧选择或输入你的任务画像，点击按钮立即计算最省搭配与月度花费。</div>
+      </div>
+    </div>
+
+    <!-- AI 架构师深度诊断 -->
+    <div style="margin-top:16px; display:flex; justify-content:flex-end;">
+      <button id="btnAiDiagnosis" class="btn-action primary" style="padding:10px 20px; font-size:13px;">
+        <span>🧠</span> 生成 AI 架构师深度选型与避坑诊断
+      </button>
+    </div>
+
+    <div class="ai-diag-panel" id="aiDiagPanel">
+      <div class="ai-diag-head">
+        <div class="ai-diag-title">
+          <span>🎯</span> AI 架构师深度诊断与落地建议
+        </div>
+        <div id="aiDiagStatus" style="font-size:12px; color:#38bdf8;">准备就绪</div>
+      </div>
+      <div class="ai-diag-content" id="aiDiagContent">
+        点击上方按钮，系统将结合当前斩杀线数据与您的任务画像，发起专属选型诊断...
+      </div>
+    </div>
+  </section>
+
+  <!-- 补录弹窗 -->
+  <div class="modal-overlay" id="addModal">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>➕ 手动补录 / 评测新模型</h3>
+        <button class="modal-close" id="btnCloseModal">✕</button>
+      </div>
+      <div class="form-group">
+        <label>模型全称 (Name)</label>
+        <input type="text" id="addName" placeholder="例如：DeepSeek-V4.5">
+      </div>
+      <div class="form-group">
+        <label>厂商 / 机构 (Provider)</label>
+        <input type="text" id="addProvider" placeholder="例如：DeepSeek">
+      </div>
+      <div class="form-group">
+        <label>输入价格 (元 / 百万 tokens)</label>
+        <input type="number" id="addPrice" step="0.01" placeholder="例如：4.00">
+      </div>
+      <div class="form-group">
+        <label>能力跑分 (0-100分，建议参考共识分)</label>
+        <input type="number" id="addScore" step="0.1" placeholder="例如：85.5">
+      </div>
+      <button id="btnSaveCustomModel" class="btn-action primary" style="width:100%; justify-content:center; padding:11px 0; margin-top:8px;">
+        保存并实时渲染进斩杀线
+      </button>
+    </div>
+  </div>
+
+  <div id="tooltip"></div>
+</div>
+
+<script>
+let ROWS = [
+  {
+    "idx": 0,
+    "name": "Claude Fable 5.1",
+    "provider": "Anthropic",
+    "slug": "claude-fable-5-1",
+    "score": 96.4,
+    "price": 67.11,
+    "priceOut": 335.53,
+    "effi": 1.4364476233050216,
+    "zone": "D",
+    "tier": "旗舰层（能力不低于锚点但成本更高，按需使用）",
+    "isAnchor": false,
+    "coverage": 46.5,
+    "release": "2026-09-01",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 8
+  },
+  {
+    "idx": 1,
+    "name": "Claude Fable 5",
+    "provider": "Anthropic",
+    "slug": "claude-fable-5",
+    "score": 93.6,
+    "price": 67.11,
+    "priceOut": 335.53,
+    "effi": 1.394725078229772,
+    "zone": "D",
+    "tier": "旗舰层（能力不低于锚点但成本更高，按需使用）",
+    "isAnchor": false,
+    "coverage": 84.5,
+    "release": "2026-06-09",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 92
+  },
+  {
+    "idx": 2,
+    "name": "GPT-6 Astra",
+    "provider": "OpenAI",
+    "slug": "gpt-6-astra",
+    "score": 93.3,
+    "price": 67.11,
+    "priceOut": 335.53,
+    "effi": 1.390254805543138,
+    "zone": "D",
+    "tier": "旗舰层（能力不低于锚点但成本更高，按需使用）",
+    "isAnchor": false,
+    "coverage": 75.5,
+    "release": "2026-09-03",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 6
+  },
+  {
+    "idx": 3,
+    "name": "Claude Opus 5",
+    "provider": "Anthropic",
+    "slug": "claude-opus-5",
+    "score": 92.6,
+    "price": 33.55,
+    "priceOut": 167.76,
+    "effi": 2.760059612518629,
+    "zone": "D",
+    "tier": "旗舰层（能力不低于锚点但成本更高，按需使用）",
+    "isAnchor": false,
+    "coverage": 84.5,
+    "release": "2026-07-24",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 47
+  },
+  {
+    "idx": 4,
+    "name": "GPT-6 Astra Pro",
+    "provider": "OpenAI",
+    "slug": "gpt-6-astra-pro",
+    "score": 91.8,
+    "price": 67.11,
+    "priceOut": 335.55,
+    "effi": 1.3679034421099687,
+    "zone": "D",
+    "tier": "旗舰层（能力不低于锚点但成本更高，按需使用）",
+    "isAnchor": false,
+    "coverage": null,
+    "release": "2026-08-05",
+    "custom": true,
+    "estimatedScore": true,
+    "priceSource": "custom",
+    "note": "GPT-6 推理增强旗舰版，共识分91.8",
+    "days": 35
+  },
+  {
+    "idx": 5,
+    "name": "GPT-5.6 Sol",
+    "provider": "OpenAI",
+    "slug": "gpt-5-6-sol",
+    "score": 85.6,
+    "price": 33.55,
+    "priceOut": 201.32,
+    "effi": 2.5514157973174365,
+    "zone": "D",
+    "tier": "旗舰层（能力不低于锚点但成本更高，按需使用）",
+    "isAnchor": false,
+    "coverage": 84.5,
+    "release": "2026-07-09",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 62
+  },
+  {
+    "idx": 6,
+    "name": "Grok 4.6",
+    "provider": "xAI",
+    "slug": "grok-4-6",
+    "score": 81.8,
+    "price": 13.42,
+    "priceOut": 40.26,
+    "effi": 6.095380029806259,
+    "zone": "D",
+    "tier": "旗舰层（能力不低于锚点但成本更高，按需使用）",
+    "isAnchor": false,
+    "coverage": 67.5,
+    "release": "2026-08-12",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 28
+  },
+  {
+    "idx": 7,
+    "name": "Muse Spark 1.3",
+    "provider": "Meta",
+    "slug": "muse-spark-1-3",
+    "score": 81.5,
+    "price": 8.39,
+    "priceOut": 28.52,
+    "effi": 9.713945172824792,
+    "zone": "D",
+    "tier": "旗舰层（能力不低于锚点但成本更高，按需使用）",
+    "isAnchor": false,
+    "coverage": null,
+    "release": "2026-08-15",
+    "custom": true,
+    "estimatedScore": true,
+    "priceSource": "custom",
+    "note": "人工智力校准：剔除偏科水分，从91.2分修正至81.5分（位列第6-7名，与GPT-5.6/Kimi梯队相当）",
+    "days": 25
+  },
+  {
+    "idx": 8,
+    "name": "Muse Spark 1.3 Contributor",
+    "provider": "Meta",
+    "slug": "muse-spark-1-3-contributor",
+    "score": 81.5,
+    "price": 0.71,
+    "priceOut": 1.42,
+    "effi": 114.7887323943662,
+    "zone": "C",
+    "tier": "性价比基座（推荐）",
+    "isAnchor": false,
+    "coverage": null,
+    "release": "2026-08-20",
+    "custom": true,
+    "estimatedScore": true,
+    "priceSource": "custom",
+    "note": "数据回流训练版：允许Meta使用对话数据进行模型迭代，极低输入成本（约$0.10/M，折合¥0.71/M）",
+    "days": 20
+  },
+  {
+    "idx": 9,
+    "name": "Kimi K3",
+    "provider": "Moonshot AI",
+    "slug": "kimi-k-3",
+    "score": 80.7,
+    "price": 20,
+    "priceOut": 100,
+    "effi": 4.035,
+    "zone": "D",
+    "tier": "旗舰层（能力不低于锚点但成本更高，按需使用）",
+    "isAnchor": false,
+    "coverage": 84.5,
+    "release": "2026-07-16",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 55
+  },
+  {
+    "idx": 10,
+    "name": "Gemini 3.8 Flash",
+    "provider": "Google",
+    "slug": "gemini-3-8-flash",
+    "score": 80.7,
+    "price": 5.03,
+    "priceOut": 25.16,
+    "effi": 16.043737574552683,
+    "zone": "C",
+    "tier": "性价比基座（推荐）",
+    "isAnchor": true,
+    "coverage": 84.5,
+    "release": "2026-09-02",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 7
+  },
+  {
+    "idx": 11,
+    "name": "GLM-5.3",
+    "provider": "Z.ai",
+    "slug": "glm-5-3",
+    "score": 79.1,
+    "price": 9.39,
+    "priceOut": 29.53,
+    "effi": 8.423855165069222,
+    "zone": "X",
+    "tier": "斩杀区（相对锚点更弱且更贵，位于原版图右下方）",
+    "isAnchor": false,
+    "coverage": 84.5,
+    "release": "2026-08-18",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 22
+  },
+  {
+    "idx": 12,
+    "name": "Gemini 3.7 Flash",
+    "provider": "Google",
+    "slug": "gemini-3-7-flash",
+    "score": 77.7,
+    "price": 5.03,
+    "priceOut": 25.16,
+    "effi": 15.447316103379721,
+    "zone": "B",
+    "tier": "海量走量层（够用且便宜，可作走量）",
+    "isAnchor": false,
+    "coverage": 76.5,
+    "release": "2026-08-13",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 27
+  },
+  {
+    "idx": 13,
+    "name": "Qwen3.8 Flash Next",
+    "provider": "Alibaba",
+    "slug": "qwen-3-8-flash-next",
+    "score": 76.8,
+    "price": 0.8,
+    "priceOut": 2.7,
+    "effi": 95.99999999999999,
+    "zone": "B",
+    "tier": "海量走量层（够用且便宜，可作走量）",
+    "isAnchor": false,
+    "coverage": 49,
+    "release": "2026-08-26",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 14
+  },
+  {
+    "idx": 14,
+    "name": "Doubao 2.1 Pro",
+    "provider": "ByteDance",
+    "slug": "doubao-2-1-pro",
+    "score": 76.8,
+    "price": 6,
+    "priceOut": 30,
+    "effi": 12.799999999999999,
+    "zone": "X",
+    "tier": "斩杀区（相对锚点更弱且更贵，位于原版图右下方）",
+    "isAnchor": false,
+    "coverage": null,
+    "release": "2026-06-28",
+    "custom": true,
+    "estimatedScore": true,
+    "priceSource": "custom",
+    "note": "火山方舟 Doubao-Seed-2.1-pro 官方正价：输入¥6.0/M，输出¥30.0/M，256k窗口，生产级Coding & Agent",
+    "days": 73
+  },
+  {
+    "idx": 15,
+    "name": "Tencent Hunyuan-4 (Hy4)",
+    "provider": "Tencent",
+    "slug": "hunyuan-hy4-preview",
+    "score": 75.5,
+    "price": 6,
+    "priceOut": 18,
+    "effi": 12.583333333333334,
+    "zone": "X",
+    "tier": "斩杀区（相对锚点更弱且更贵，位于原版图右下方）",
+    "isAnchor": false,
+    "coverage": null,
+    "release": "2026-08-28",
+    "custom": true,
+    "estimatedScore": false,
+    "priceSource": "custom",
+    "note": "腾讯混元4预览版，综合能力分75.5，输入¥6/M，输出¥18/M",
+    "days": 12
+  },
+  {
+    "idx": 16,
+    "name": "GPT-5.6 Terra",
+    "provider": "OpenAI",
+    "slug": "gpt-5-6-terra",
+    "score": 74.1,
+    "price": 13.42,
+    "priceOut": 80.53,
+    "effi": 5.521609538002981,
+    "zone": "X",
+    "tier": "斩杀区（相对锚点更弱且更贵，位于原版图右下方）",
+    "isAnchor": false,
+    "coverage": 84.5,
+    "release": "2026-07-09",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 62
+  },
+  {
+    "idx": 17,
+    "name": "Claude Opus 4.8",
+    "provider": "Anthropic",
+    "slug": "claude-opus-4-8",
+    "score": 71.9,
+    "price": 33.55,
+    "priceOut": 167.76,
+    "effi": 2.1430700447093893,
+    "zone": "X",
+    "tier": "斩杀区（相对锚点更弱且更贵，位于原版图右下方）",
+    "isAnchor": false,
+    "coverage": 84.5,
+    "release": "2026-05-28",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 104
+  },
+  {
+    "idx": 18,
+    "name": "Muse Spark 1.2",
+    "provider": "Meta",
+    "slug": "muse-spark-1-2",
+    "score": 71.8,
+    "price": 8.39,
+    "priceOut": 28.52,
+    "effi": 8.557806912991655,
+    "zone": "X",
+    "tier": "斩杀区（相对锚点更弱且更贵，位于原版图右下方）",
+    "isAnchor": false,
+    "coverage": 76.5,
+    "release": "2026-08-05",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 35
+  },
+  {
+    "idx": 19,
+    "name": "Qwen3.8 Max",
+    "provider": "Alibaba",
+    "slug": "qwen-3-8-max",
+    "score": 70.5,
+    "price": 12,
+    "priceOut": 36,
+    "effi": 5.875,
+    "zone": "X",
+    "tier": "斩杀区（相对锚点更弱且更贵，位于原版图右下方）",
+    "isAnchor": false,
+    "coverage": 81,
+    "release": "2026-07-19",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 52
+  },
+  {
+    "idx": 20,
+    "name": "Claude Opus 4.7",
+    "provider": "Anthropic",
+    "slug": "claude-opus-4-7",
+    "score": 70,
+    "price": 33.55,
+    "priceOut": 167.76,
+    "effi": 2.086438152011923,
+    "zone": "X",
+    "tier": "斩杀区（相对锚点更弱且更贵，位于原版图右下方）",
+    "isAnchor": false,
+    "coverage": 68.5,
+    "release": "2026-04-16",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 146
+  },
+  {
+    "idx": 21,
+    "name": "Doubao 2.1 Turbo",
+    "provider": "ByteDance",
+    "slug": "doubao-2-1-turbo",
+    "score": 69.2,
+    "price": 3,
+    "priceOut": 15,
+    "effi": 23.066666666666666,
+    "zone": "B",
+    "tier": "海量走量层（够用且便宜，可作走量）",
+    "isAnchor": false,
+    "coverage": null,
+    "release": "2026-06-28",
+    "custom": true,
+    "estimatedScore": true,
+    "priceSource": "custom",
+    "note": "火山方舟 Doubao-Seed-2.1-turbo 官方定价（Pro的50%）：输入¥3.0/M，输出¥15.0/M，256k窗口",
+    "days": 73
+  },
+  {
+    "idx": 22,
+    "name": "GPT-5.5",
+    "provider": "OpenAI",
+    "slug": "gpt-5-5",
+    "score": 68.1,
+    "price": 33.55,
+    "priceOut": 201.32,
+    "effi": 2.029806259314456,
+    "zone": "X",
+    "tier": "斩杀区（相对锚点更弱且更贵，位于原版图右下方）",
+    "isAnchor": false,
+    "coverage": 76.5,
+    "release": "2026-04-23",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 139
+  },
+  {
+    "idx": 23,
+    "name": "GLM-5.3 Flash",
+    "provider": "Z.ai",
+    "slug": "glm-5-3-flash",
+    "score": 64.4,
+    "price": 0.8,
+    "priceOut": 2.8,
+    "effi": 80.5,
+    "zone": "B",
+    "tier": "海量走量层（够用且便宜，可作走量）",
+    "isAnchor": false,
+    "coverage": 84.5,
+    "release": "2026-08-26",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 14
+  },
+  {
+    "idx": 24,
+    "name": "GPT-5.4",
+    "provider": "OpenAI",
+    "slug": "gpt-5-4",
+    "score": 59.9,
+    "price": 16.78,
+    "priceOut": 100.66,
+    "effi": 3.569725864123957,
+    "zone": "X",
+    "tier": "斩杀区（相对锚点更弱且更贵，位于原版图右下方）",
+    "isAnchor": false,
+    "coverage": 69.5,
+    "release": "2026-03-05",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 188
+  },
+  {
+    "idx": 25,
+    "name": "Muse Spark 1.1",
+    "provider": "Meta",
+    "slug": "muse-spark-1-1",
+    "score": 56.5,
+    "price": 8.39,
+    "priceOut": 28.52,
+    "effi": 6.7342073897497015,
+    "zone": "X",
+    "tier": "斩杀区（相对锚点更弱且更贵，位于原版图右下方）",
+    "isAnchor": false,
+    "coverage": 73,
+    "release": "2026-07-09",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 62
+  },
+  {
+    "idx": 26,
+    "name": "Grok 4.5",
+    "provider": "xAI",
+    "slug": "grok-4-5",
+    "score": 56.3,
+    "price": 13.42,
+    "priceOut": 40.26,
+    "effi": 4.195230998509687,
+    "zone": "X",
+    "tier": "斩杀区（相对锚点更弱且更贵，位于原版图右下方）",
+    "isAnchor": false,
+    "coverage": 84.5,
+    "release": "2026-07-08",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 63
+  },
+  {
+    "idx": 27,
+    "name": "Claude Sonnet 5",
+    "provider": "Anthropic",
+    "slug": "claude-sonnet-5",
+    "score": 53.5,
+    "price": 13.42,
+    "priceOut": 67.11,
+    "effi": 3.9865871833084947,
+    "zone": "X",
+    "tier": "斩杀区（相对锚点更弱且更贵，位于原版图右下方）",
+    "isAnchor": false,
+    "coverage": 84.5,
+    "release": "2026-06-30",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 71
+  },
+  {
+    "idx": 28,
+    "name": "DeepSeek V4 Pro 0813",
+    "provider": "DeepSeek",
+    "slug": "deepseek-v-4-pro-20260813",
+    "score": 52.8,
+    "price": 9,
+    "priceOut": 27,
+    "effi": 5.866666666666666,
+    "zone": "X",
+    "tier": "斩杀区（相对锚点更弱且更贵，位于原版图右下方）",
+    "isAnchor": false,
+    "coverage": 76.5,
+    "release": "2026-08-13",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 27
+  },
+  {
+    "idx": 29,
+    "name": "GPT-5.6 Luna",
+    "provider": "OpenAI",
+    "slug": "gpt-5-6-luna",
+    "score": 50.6,
+    "price": 1.34,
+    "priceOut": 8.05,
+    "effi": 37.76119402985074,
+    "zone": "B",
+    "tier": "海量走量层（够用且便宜，可作走量）",
+    "isAnchor": false,
+    "coverage": 81,
+    "release": "2026-07-09",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 62
+  },
+  {
+    "idx": 30,
+    "name": "Claude Opus 4.6",
+    "provider": "Anthropic",
+    "slug": "claude-opus-4-6",
+    "score": 49,
+    "price": 33.55,
+    "priceOut": 167.76,
+    "effi": 1.460506706408346,
+    "zone": "X",
+    "tier": "斩杀区（相对锚点更弱且更贵，位于原版图右下方）",
+    "isAnchor": false,
+    "coverage": 61.5,
+    "release": "2026-02-05",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 216
+  },
+  {
+    "idx": 31,
+    "name": "Gemini 3.6 Flash",
+    "provider": "Google",
+    "slug": "gemini-3-6-flash",
+    "score": 48.7,
+    "price": 5.03,
+    "priceOut": 25.16,
+    "effi": 9.681908548707753,
+    "zone": "B",
+    "tier": "海量走量层（够用且便宜，可作走量）",
+    "isAnchor": false,
+    "coverage": 76.5,
+    "release": "2026-07-21",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 50
+  },
+  {
+    "idx": 32,
+    "name": "GLM-5.2",
+    "provider": "Z.ai",
+    "slug": "glm-5-2",
+    "score": 48.1,
+    "price": 8,
+    "priceOut": 28,
+    "effi": 6.0125,
+    "zone": "X",
+    "tier": "斩杀区（相对锚点更弱且更贵，位于原版图右下方）",
+    "isAnchor": false,
+    "coverage": 73,
+    "release": "2026-06-16",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 85
+  },
+  {
+    "idx": 33,
+    "name": "Gemini 3.5 Flash",
+    "provider": "Google",
+    "slug": "gemini-3-5-flash",
+    "score": 46.5,
+    "price": 10.07,
+    "priceOut": 60.39,
+    "effi": 4.617676266137041,
+    "zone": "X",
+    "tier": "斩杀区（相对锚点更弱且更贵，位于原版图右下方）",
+    "isAnchor": false,
+    "coverage": 76.5,
+    "release": "2026-05-19",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 113
+  },
+  {
+    "idx": 34,
+    "name": "DeepSeek V4 Flash 0731",
+    "provider": "DeepSeek",
+    "slug": "deepseek-v-4-flash-20260731",
+    "score": 39.8,
+    "price": 3,
+    "priceOut": 9,
+    "effi": 13.266666666666666,
+    "zone": "B",
+    "tier": "边缘备选（能力不足，仅极轻量场景）",
+    "isAnchor": false,
+    "coverage": 73,
+    "release": "2026-07-31",
+    "custom": false,
+    "estimatedScore": false,
+    "priceSource": "aihot",
+    "note": "",
+    "days": 40
+  },
+  {
+    "idx": 35,
+    "name": "DeepSeek V4 Flash 闲时",
+    "provider": "DeepSeek",
+    "slug": "deepseek-v4-flash-offpeak",
+    "score": 39.8,
+    "price": 1.5,
+    "priceOut": 4.5,
+    "effi": 26.53333333333333,
+    "zone": "B",
+    "tier": "边缘备选（能力不足，仅极轻量场景）",
+    "isAnchor": false,
+    "coverage": null,
+    "release": "2026-07-31",
+    "custom": true,
+    "estimatedScore": false,
+    "priceSource": "custom",
+    "note": "DeepSeek 官方 API 空闲时段（周一至周五 9:00-12:00、14:00-18:00 以外，即夜间及周末全天半价）：输入¥1.50/M（Cache命中¥0.05/M），输出¥4.50/M。AIHOT共识分39.8",
+    "days": 40
+  },
+  {
+    "idx": 36,
+    "name": "DeepSeek V4 Flash 忙时",
+    "provider": "DeepSeek",
+    "slug": "deepseek-v4-flash-peak",
+    "score": 39.8,
+    "price": 3,
+    "priceOut": 9,
+    "effi": 13.266666666666666,
+    "zone": "B",
+    "tier": "边缘备选（能力不足，仅极轻量场景）",
+    "isAnchor": false,
+    "coverage": null,
+    "release": "2026-07-31",
+    "custom": true,
+    "estimatedScore": false,
+    "priceSource": "custom",
+    "note": "DeepSeek 官方 API 高峰时段（周一至周五 9:00-12:00、14:00-18:00）：输入¥3.00/M（Cache命中¥0.10/M），输出¥9.00/M。AIHOT共识分39.8",
+    "days": 40
+  }
+];
+const TASKMAP = {
+  "version": 1,
+  "_readme": "通用画像推荐引擎的任务映射表（HA-killzone.ps1 与网页面板共用，单一事实源）。tasks.key = 画像/命令行里引用的任务类型；minScore = 该类任务对模型能力分的门槛（AIHOT 共识分口径）；share = 该类任务在总用量中的默认占比（用户只勾选部分任务时按选中项归一化）；keywords = 网页面板自由文本自动识别关键词。intensity.monthlyMTokens = 该强度下估算的月输入 token 量（百万）；outRatio = 输出/输入 token 比例，用于月成本估算。",
+  "outRatio": 0.6,
+  "intensity": {
+    "light": {
+      "label": "轻度 · 每天偶尔用",
+      "monthlyMTokens": 3
+    },
+    "medium": {
+      "label": "中度 · 每天 1-2 小时",
+      "monthlyMTokens": 10
+    },
+    "heavy": {
+      "label": "重度 · Agent/批量任务",
+      "monthlyMTokens": 40
+    }
+  },
+  "tasks": [
+    {
+      "key": "code",
+      "label": "代码开发",
+      "icon": "💻",
+      "desc": "写代码、调试、重构、技术方案",
+      "minScore": 65,
+      "share": 0.3,
+      "keywords": [
+        "代码",
+        "编程",
+        "开发",
+        "程序",
+        "前端",
+        "后端",
+        "全栈",
+        "bug",
+        "调试",
+        "软件",
+        "程序员",
+        "算法",
+        "工程师",
+        "网站",
+        "app"
+      ]
+    },
+    {
+      "key": "research",
+      "label": "深度研究",
+      "icon": "🔬",
+      "desc": "行业调研、竞品分析、论文、报告",
+      "minScore": 65,
+      "share": 0.25,
+      "keywords": [
+        "研究",
+        "调研",
+        "分析",
+        "竞品",
+        "报告",
+        "论文",
+        "行业",
+        "市场",
+        "尽调",
+        "数据分",
+        "咨询"
+      ]
+    },
+    {
+      "key": "writing",
+      "label": "长文写作",
+      "icon": "✍️",
+      "desc": "公众号、博客、文案、剧本",
+      "minScore": 58,
+      "share": 0.15,
+      "keywords": [
+        "写作",
+        "文案",
+        "公众号",
+        "文章",
+        "博客",
+        "小说",
+        "剧本",
+        "内容",
+        "编辑",
+        "作者",
+        "自媒体"
+      ]
+    },
+    {
+      "key": "translate",
+      "label": "翻译润色",
+      "icon": "🌐",
+      "desc": "翻译、摘要、改写、校对",
+      "minScore": 52,
+      "share": 0.1,
+      "keywords": [
+        "翻译",
+        "润色",
+        "摘要",
+        "总结",
+        "改写",
+        "校对",
+        "外语",
+        "英文",
+        "英语"
+      ]
+    },
+    {
+      "key": "brainstorm",
+      "label": "创意灵感",
+      "icon": "💡",
+      "desc": "头脑风暴、起名、营销点子",
+      "minScore": 58,
+      "share": 0.08,
+      "keywords": [
+        "创意",
+        "头脑风暴",
+        "灵感",
+        "点子",
+        "起名",
+        "营销",
+        "广告",
+        "口号",
+        "策划"
+      ]
+    },
+    {
+      "key": "tutor",
+      "label": "学习辅导",
+      "icon": "📚",
+      "desc": "课程学习、讲解、备考答疑",
+      "minScore": 52,
+      "share": 0.07,
+      "keywords": [
+        "学习",
+        "辅导",
+        "讲解",
+        "教学",
+        "备考",
+        "课程",
+        "答疑",
+        "培训",
+        "老师",
+        "学生",
+        "考研",
+        "考证"
+      ]
+    },
+    {
+      "key": "daily",
+      "label": "日常问答",
+      "icon": "💬",
+      "desc": "日常咨询、闲聊、邮件草稿",
+      "minScore": 42,
+      "share": 0.03,
+      "keywords": [
+        "问答",
+        "闲聊",
+        "咨询",
+        "客服",
+        "邮件",
+        "日常",
+        "聊天"
+      ]
+    },
+    {
+      "key": "data",
+      "label": "资料整理",
+      "icon": "🗂️",
+      "desc": "格式转换、整理归档、批量处理",
+      "minScore": 40,
+      "share": 0.02,
+      "keywords": [
+        "整理",
+        "格式",
+        "表格",
+        "录入",
+        "转换",
+        "归档",
+        "清洗",
+        "批量"
+      ]
+    }
+  ]
+};
+const PROFILE = null;
+
+// 检查本地持久化新增的模型 (Local-First)
+async function loadCustomModels() {
+  try {
+    let saved = null;
+    if (window.cherry && window.cherry.storage) {
+      saved = await window.cherry.storage.get("custom_killzone_models");
+    } else {
+      saved = localStorage.getItem("custom_killzone_models");
+    }
+    if (saved) {
+      const customs = JSON.parse(saved);
+      if (Array.isArray(customs)) {
+        customs.forEach(c => {
+          c.idx = ROWS.length;
+          ROWS.push(c);
+        });
+        document.getElementById("total-models-count").textContent = ROWS.length;
+      }
+    }
+  } catch (e) {
+    console.warn("读取本地补录模型失败", e);
+  }
+}
+
+// 零依赖 Markdown 渲染器
+function renderMarkdown(md) {
+  if (!md) return "";
+  let html = md;
+  html = html.replace(/^### (.*$)/gim, "<h3>$1</h3>");
+  html = html.replace(/^## (.*$)/gim, "<h2>$1</h2>");
+  html = html.replace(/^# (.*$)/gim, "<h1>$1</h1>");
+  html = html.replace(/^\> (.*$)/gim, "<blockquote><p>$1</p></blockquote>");
+  html = html.replace(/\*\*(.*?)\*\*/gim, "<strong>$1</strong>");
+  html = html.replace(/\*(.*?)\*/gim, "<em>$1</em>");
+  html = html.replace(/^\s*\d+\.\s+(.*$)/gim, "<ol><li>$1</li></ol>");
+  html = html.replace(/^\s*[-*+]\s+(.*$)/gim, "<ul><li>$1</li></ul>");
+  html = html.replace(/<\/ol>\s*<ol>/gim, "");
+  html = html.replace(/<\/ul>\s*<ul>/gim, "");
+  html = html.replace(/\n\n/gim, "<br/>");
+  return html;
+}
+
+// 散点图 Tooltip 绑定
+(function () {
+  var tip = document.getElementById('tooltip');
+  document.body.appendChild(tip);
+  var chart = document.getElementById('chart');
+  var dots = chart.querySelectorAll('circle.dot');
+  var map = {};
+  ROWS.forEach(function (p) { map[p.idx] = p; });
+
+  function showTip(p, e) {
+    if (!p) return;
+    var zc = {X:'#fb7185',B:'#38bdf8',C:'#34d399',D:'#a78bfa',NA:'#64748b'};
+    var zl = {X:'斩杀',B:'走量',C:'安全',D:'旗舰',NA:'未知'};
+    var z = p.zone in zc ? p.zone : 'NA';
+    var covLine = p.coverage!=null ? '<div>评测完整度 <b>' + p.coverage + '%</b></div>' : '';
+    var relLine = p.release ? '<div style="color:#94a3b8">上线 ' + p.release + '</div>' : '';
+    var frLine = p.isAnchor ? '<div style="color:#fbbf24">★ 当前锚点（斩杀线参照）</div>' :
+      '<div style="color:#94a3b8">相对锚点：' + (z === 'X' ? '更弱且更贵' : z === 'B' ? '更弱但更便宜' : z === 'C' ? '不弱且不更贵' : z === 'D' ? '更强但更贵' : '无法判定') + '</div>';
+
+    tip.innerHTML =
+      '<div><b>' + p.name + '</b><span class="tt-zone" style="background:' + zc[z] + '">' + zl[z] + '</span></div>' +
+      '<div style="color:#94a3b8">' + (p.provider||'') + '</div>' +
+      '<div>能力 <b>' + p.score.toFixed(1) + '</b> 分</div>' +
+      '<div>输入 <b>¥' + p.price.toFixed(2) + '</b>/M　输出 ' + (p.priceOut!=null ? '¥'+Number(p.priceOut).toFixed(2) : '—') + '/M</div>' +
+      '<div>性价比 <b>' + (p.effi!=null ? Number(p.effi).toFixed(2) : '—') + '</b> 分/元</div>' +
+      frLine + covLine + relLine;
+    tip.style.display = 'block';
+    tip.style.left = Math.min(e.clientX + 14, window.innerWidth - 320) + 'px';
+    tip.style.top = (e.clientY + 14) + 'px';
+  }
+
+  function hideTip() { tip.style.display = 'none'; }
+  dots.forEach(function (d) {
+    var i = +d.getAttribute('data-i');
+    d.addEventListener('mousemove', function (e) { showTip(map[i], e); });
+    d.addEventListener('mouseleave', hideTip);
+  });
+})();
+
+// 通用画像推荐引擎
+(function () {
+  if (!TASKMAP || !TASKMAP.tasks || !document.getElementById('rec-panel')) return;
+  var ZONE_PRI = { C: 0, B: 1, D: 2 };
+  var ZC = { C: '#34d399', B: '#38bdf8', D: '#a78bfa', X: '#fb7185', A: '#f43f5e', NA: '#64748b' };
+  var ZL = { C: '安全', B: '走量', D: '旗舰', X: '斩杀', A: '斩杀', NA: '未知' };
+  var bySlug = {}; ROWS.forEach(function (p) { bySlug[p.slug] = p; });
+  var keyMap = {}; TASKMAP.tasks.forEach(function (t) { keyMap[t.key] = t; });
+  var descInput = document.getElementById('work-desc');
+  var chipsBox = document.getElementById('task-chips');
+  var result = document.getElementById('rec-result');
+
+  function jesc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function zoneBadge(z) {
+    var c = ZC[z] || ZC.NA; var l = ZL[z] || z;
+    return '<span style="display:inline-block;padding:0 7px;border-radius:6px;font-size:11px;background:'
+      + c + ';color:#06281e;font-weight:700;margin-left:6px">' + l + '</span>';
+  }
+
+  // 渲染任务选项
+  TASKMAP.tasks.forEach(function (t) {
+    var lbl = document.createElement('label');
+    lbl.className = 'chip';
+    lbl.innerHTML = '<input type="checkbox" value="' + t.key + '"><span class="chip-ic">'
+      + t.icon + '</span><b>' + jesc(t.label) + '</b><em>≥' + t.minScore + '分</em>';
+    chipsBox.appendChild(lbl);
+  });
+
+  // 渲染强度选项
+  var intBox = document.getElementById('intensity-opts');
+  var firstInt = true;
+  Object.keys(TASKMAP.intensity).forEach(function (k) {
+    var it = TASKMAP.intensity[k];
+    var lbl = document.createElement('label');
+    lbl.className = 'int-opt';
+    lbl.innerHTML = '<input type="radio" name="intensity" value="' + k + '"' + (firstInt ? ' checked' : '') + '> ' + jesc(it.label);
+    intBox.appendChild(lbl);
+    firstInt = false;
+  });
+
+  // 文本识别关键词
+  descInput.addEventListener('input', function () {
+    var val = descInput.value.trim().toLowerCase();
+    if (!val) return;
+    var matched = {};
+    TASKMAP.tasks.forEach(function (t) {
+      if (t.keywords) {
+        for (var i = 0; i < t.keywords.length; i++) {
+          if (val.indexOf(t.keywords[i].toLowerCase()) !== -1) {
+            matched[t.key] = true;
+            break;
+          }
+        }
+      }
+    });
+    if (Object.keys(matched).length) {
+      chipsBox.querySelectorAll('input[type=checkbox]').forEach(function (cb) {
+        cb.checked = !!matched[cb.value];
+      });
+    }
+  });
+
+  function getSelectedTasks() {
+    var sel = [];
+    chipsBox.querySelectorAll('input[type=checkbox]:checked').forEach(function (cb) {
+      if (keyMap[cb.value]) sel.push(keyMap[cb.value]);
+    });
+    if (!sel.length) sel = TASKMAP.tasks.slice();
+    var sum = 0; sel.forEach(function (t) { sum += t.share; });
+    return sel.map(function (t) {
+      return { t: t, share: t.share / sum };
+    });
+  }
+
+  function costOf(p, mTok, outRatio) {
+    var pout = (p.priceOut != null) ? Number(p.priceOut) : p.price * 2;
+    return mTok * (p.price + outRatio * pout);
+  }
+
+  window.runRec = function() {
+    var tasks = getSelectedTasks();
+    var intKey = document.querySelector('input[name=intensity]:checked').value;
+    var intConf = TASKMAP.intensity[intKey];
+    var budget = parseFloat(document.getElementById('budget-input').value) || 100;
+    var mTok = intConf.monthlyMTokens;
+    var outRatio = TASKMAP.outRatio || 0.6;
+
+    var cands = ROWS.filter(function (p) {
+      return p.zone in ZONE_PRI && (p.effi != null && p.effi > 0);
+    });
+
+    var items = [];
+    tasks.forEach(function (task) {
+      var t = task.t;
+      var q = cands.filter(function (p) { return p.score >= t.minScore; });
+      var warn = false;
+      if (!q.length) {
+        warn = true;
+        var topS = -1, bestP = null;
+        cands.forEach(function (p) { if (p.score > topS) { topS = p.score; bestP = p; } });
+        q = bestP ? [bestP] : [];
+      }
+      q.sort(function (a, b) {
+        var za = ZONE_PRI[a.zone], zb = ZONE_PRI[b.zone];
+        if (za !== zb) return za - zb;
+        return (b.effi || 0) - (a.effi || 0);
+      });
+      var pick = q[0];
+      var alt = q.length > 1 ? q[1] : null;
+      items.push({
+        t: t, share: task.share, pick: pick, alt: alt, warn: warn,
+        cost: task.share * costOf(pick, mTok, outRatio)
+      });
+    });
+
+    var total = 0; items.forEach(function (it) { total += it.cost; });
+    renderRec({ items: items, total: total, budget: budget, mTok: mTok,
+                intLabel: intConf.label, outRatio: outRatio });
+  };
+
+  function renderRec(r) {
+    window.lastRecResult = r;
+    var html = '<div class="rec-sum">画像：月预算 <b>¥' + r.budget + '</b> ｜ '
+             + jesc(r.intLabel) + '（约 ' + r.mTok + 'M tokens/月）</div>';
+    html += '<div class="rec-tasks">';
+    r.items.forEach(function (it) {
+      var p = it.pick;
+      html += '<div class="rec-task">'
+        + '<div class="rec-task-head"><span>' + it.t.icon + '</span><b>' + jesc(it.t.label)
+        + '</b><span class="req">需≥' + it.t.minScore + '分</span></div>'
+        + '<div class="rec-model"><b>' + jesc(p.name) + '</b>' + zoneBadge(p.zone)
+        + '<span class="rec-meta">' + p.score.toFixed(1) + ' 分 · ¥' + p.price.toFixed(1) + '/M</span></div>'
+        + '<div class="rec-cost">预估月开销 <b>¥' + it.cost.toFixed(1) + '</b></div></div>';
+    });
+    html += '</div>';
+
+    var over = r.total > r.budget;
+    var pct = Math.min(100, r.total / r.budget * 100);
+    html += '<div class="budget-bar-wrap"><div class="budget-label">月度总成本 <b>¥'
+          + r.total.toFixed(1) + '</b> / 预算 ¥' + r.budget
+          + (over ? ' · 超支 ¥' + (r.total - r.budget).toFixed(1) : ' · 结余 ¥' + (r.budget - r.total).toFixed(1))
+          + '</div><div class="budget-bar"><div class="budget-fill' + (over ? ' over' : '')
+          + '" style="width:' + pct + '%"></div></div></div>';
+
+    result.innerHTML = html;
+  }
+
+  document.getElementById('rec-btn').addEventListener('click', window.runRec);
+})();
+
+// AI 诊断功能与弹窗事件
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadCustomModels();
+
+  // 弹窗逻辑
+  const addModal = document.getElementById("addModal");
+  document.getElementById("btnOpenAddModal").addEventListener("click", () => addModal.classList.add("open"));
+  document.getElementById("btnCloseModal").addEventListener("click", () => addModal.classList.remove("open"));
+
+  // 保存补录模型
+  document.getElementById("btnSaveCustomModel").addEventListener("click", async () => {
+    const name = document.getElementById("addName").value.trim();
+    const provider = document.getElementById("addProvider").value.trim() || "自定义";
+    const price = parseFloat(document.getElementById("addPrice").value) || 0;
+    const score = parseFloat(document.getElementById("addScore").value) || 0;
+
+    if (!name || !price || !score) {
+      alert("请完整填写模型名称、价格与跑分！");
+      return;
+    }
+
+    const newModel = {
+      idx: ROWS.length,
+      name,
+      provider,
+      slug: "custom-" + Date.now(),
+      score,
+      price,
+      priceOut: price * 2,
+      effi: score / price,
+      zone: (score >= 80.7 && price <= 5.03) ? "C" : (score < 80.7 && price <= 5.03) ? "B" : (score >= 80.7 && price > 5.03) ? "D" : "X",
+      tier: "用户手动录入模型",
+      isAnchor: false,
+      custom: true
+    };
+
+    ROWS.push(newModel);
+    document.getElementById("total-models-count").textContent = ROWS.length;
+
+    // 持久化存储
+    try {
+      let saved = [];
+      if (window.cherry && window.cherry.storage) {
+        const str = await window.cherry.storage.get("custom_killzone_models");
+        if (str) saved = JSON.parse(str);
+        saved.push(newModel);
+        await window.cherry.storage.set("custom_killzone_models", JSON.stringify(saved));
+      } else {
+        const str = localStorage.getItem("custom_killzone_models");
+        if (str) saved = JSON.parse(str);
+        saved.push(newModel);
+        localStorage.setItem("custom_killzone_models", JSON.stringify(saved));
+      }
+    } catch (err) {
+      console.warn("存储失败", err);
+    }
+
+    alert("模型已成功收录并在内存中生效！");
+    addModal.classList.remove("open");
+    if (window.runRec) window.runRec();
+  });
+
+  // 复制全案
+  document.getElementById("btnExportPlan").addEventListener("click", async () => {
+    if (!window.lastRecResult) {
+      alert("请先点击『规划最佳模型搭配』生成方案！");
+      return;
+    }
+    const r = window.lastRecResult;
+    let md = "# 大模型选型与算力预算配置方案\n\n";
+    md += `- 预算上限：¥${r.budget} 元/月\n`;
+    md += `- 使用强度：${r.intLabel}（约 ${r.mTok}M tokens/月）\n`;
+    md += `- 预估总月开销：¥${r.total.toFixed(1)} 元\n\n`;
+    md += "### 各任务推荐分配：\n";
+    r.items.forEach(it => {
+      md += `- **${it.t.label}**（门槛≥${it.t.minScore}分）：选用 **${it.pick.name}**（${it.pick.score}分，¥${it.pick.price}/M），预估月开销 ¥${it.cost.toFixed(1)}\n`;
+    });
+
+    if (window.cherry && window.cherry.clipboard) {
+      await window.cherry.clipboard.write(md);
+    } else {
+      navigator.clipboard.writeText(md);
+    }
+    alert("选型方案已复制为 Markdown 格式到剪贴板！");
+  });
+
+  // AI 架构师深度诊断
+  document.getElementById("btnAiDiagnosis").addEventListener("click", async () => {
+    if (!window.lastRecResult) {
+      window.runRec();
+    }
+    const diagPanel = document.getElementById("aiDiagPanel");
+    const diagContent = document.getElementById("aiDiagContent");
+    const diagStatus = document.getElementById("aiDiagStatus");
+
+    diagPanel.classList.add("show");
+    diagStatus.textContent = "AI 架构师推演中...";
+    diagContent.innerHTML = "正在结合当前斩杀线数据，综合评估技术选型风险与替代路径...";
+
+    const r = window.lastRecResult;
+    const desc = document.getElementById("work-desc").value.trim() || "常规企业知识库与综合业务办公";
+
+    let promptMsg = `【用户业务场景描述】: ${desc}\n`;
+    promptMsg += `【月预算配置】: ¥${r.budget} 元/月，使用强度: ${r.intLabel}\n`;
+    promptMsg += "【当前自动化选型方案】:\n";
+    r.items.forEach(it => {
+      promptMsg += `- ${it.t.label}: 推荐 ${it.pick.name} (共识分:${it.pick.score}, 价格:¥${it.pick.price}/M), 预估花费:¥${it.cost.toFixed(1)}\n`;
+    });
+    promptMsg += "请作为首席 AI 架构师，对上述选型方案做深度专业诊断，包含：\n1. 该搭配的最大优势与潜在技术断层风险\n2. 针对高频与低频场景的降本增效建议\n3. 落地落地的避坑指南（如 Tool Calling 支持、长文本上下文衰减）。";
+
+    try {
+      let fullText = "";
+      if (window.cherry && window.cherry.ai) {
+        await window.cherry.ai.chat({
+          messages: [
+            { role: "system", content: "你是一位资深且犀利的首席 AI 架构师，精通各类大模型性价比、能力短板、API计费与生产级落地部署。请给出结构精炼、见解独到的专业诊断。" },
+            { role: "user", content: promptMsg }
+          ]
+        }, {
+          onChunk: (chunk) => {
+            fullText += chunk;
+            diagContent.innerHTML = renderMarkdown(fullText);
+          }
+        });
+      } else {
+        // 浏览器仿真
+        fullText = "### 架构师选型诊断与避坑指南\n\n1. **核心优势**：主力与走量模型界限清晰，兼顾了成本控制与基础代码/写作质量；\n2. **避坑警示**：高频批量任务务必开启语义缓存（Cache），可再节省 50% 以上开销；针对复杂多步骤任务，需确认所选模型对 Function Calling 的稳定性；\n3. **架构建议**：建议设置熔断阈值，防止循环调用击穿月度预算。";
+        diagContent.innerHTML = renderMarkdown(fullText);
+      }
+      diagStatus.textContent = "诊断完成";
+    } catch (e) {
+      diagStatus.textContent = "推演中断";
+      diagContent.innerHTML = "AI 诊断调用异常: " + (e.message || e);
+    }
+  });
+});
+</script>
+</body>
+</html>
