@@ -4,7 +4,7 @@
     "zh": "大模型斩杀线与智能选型",
     "en": "AI Model Kill-Zone & Selection"
   },
-  "version": "1.3.2",
+  "version": "2.0.0",
   "description": {
     "zh": "大模型选型（L层）性价比斩杀线推演与预算配置工作台。支持散点图斩杀线交互、多任务画像预算降级核算、自定义模型补录（Local-First存储）与AI选型架构师深度诊断报告生成。",
     "en": "LLM selection and kill-zone cost-efficiency workbench with interactive scatter chart, task-budget profiling, local-first model registry, and AI architect diagnosis."
@@ -26,16 +26,16 @@
     "en": "v1.3.0 Major Update: Live network sync button, AI news parser, selection advisor drawer, golden logarithmic scatter projection, and CDN installation fix."
   },
   "update": {
-    "url": "https://duzhilei951.github.io/ha-kill-zone/manifest.json?v=1.3.2"
-  },
-  "package": {
-    "url": "https://duzhilei951.github.io/ha-kill-zone/releases/1.3.2/ha-kill-zone.miniapp",
-    "iconUrl": "https://duzhilei951.github.io/ha-kill-zone/icon.png",
-    "sha256": "1b0775d43b274e88deb400be73c5086fc0b63155136c8ecabf0217c9d25f1f97",
-    "size": 38975
+    "url": "https://duzhilei951.github.io/ha-kill-zone/manifest.json"
   },
   "network": [
     "openrouter.ai",
     "models.dev"
-  ]
+  ],
+  "package": {
+    "url": "https://duzhilei951.github.io/ha-kill-zone/releases/2.0.0/ha-kill-zone.miniapp",
+    "iconUrl": "https://duzhilei951.github.io/ha-kill-zone/icon.png",
+    "sha256": "3fe75f0bcaa14d6f87dc93afb6f95a19249bd830c5c7069480fe58e2c96e5c9c",
+    "size": 133120
+  }
 }
