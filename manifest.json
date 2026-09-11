@@ -4,7 +4,7 @@
     "zh": "大模型斩杀线与智能选型",
     "en": "AI Model Kill-Zone & Selection"
   },
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": {
     "zh": "大模型选型（L层）性价比斩杀线推演与预算配置工作台。支持散点图斩杀线交互、多任务画像预算降级核算、自定义模型补录（Local-First存储）与AI选型架构师深度诊断报告生成。",
     "en": "LLM selection and kill-zone cost-efficiency workbench with interactive scatter chart, task-budget profiling, local-first model registry, and AI architect diagnosis."
@@ -21,16 +21,16 @@
     "notification.show"
   ],
   "releaseNotes": {
-    "zh": "终极重构v1.2.0：1. 彻底恢复原生黄金比例散点图，超宽屏96vw沉浸式排版；2. 校准左侧安全区与走量区模型（补齐MiniMax等真实数据）；3. AI发版新闻智能抽取一键上图；4. 侧边抽屉式大模型选型首席顾问多轮互动。",
-    "en": "v1.2.0 Ultimate: 1. Full 96vw widescreen golden scatter chart restored; 2. Calibrated Safe/Volume zones with MiniMax models; 3. AI news extraction to plot dots; 4. Drawer-style interactive AI advisor chat."
+    "zh": "1.3.0重磅升级：①顶栏显式集成「实时同步最新大盘」按钮，打通动态网络数据与实时重绘；②集成AI推文/新闻智能解析；③集成选型首席顾问多轮对话；④原生黄金对数图谱与走量区坐标彻底校准；⑤彻底修复CDN安装校验。",
+    "en": "v1.3.0 Major Update: Live network sync button, AI news parser, selection advisor drawer, golden logarithmic scatter projection, and CDN installation fix."
   },
   "update": {
     "url": "https://duzhilei951.github.io/ha-kill-zone/manifest.json"
   },
   "package": {
-    "url": "https://duzhilei951.github.io/ha-kill-zone/releases/1.2.1/ha-kill-zone.miniapp",
+    "url": "https://duzhilei951.github.io/ha-kill-zone/releases/1.3.0/ha-kill-zone.miniapp",
     "iconUrl": "https://duzhilei951.github.io/ha-kill-zone/icon.png",
-    "sha256": "569a17fdab0b9095ed649c276a1e5f6f1985d4b49aa4d0f01164d71df2144f6b",
-    "size": 35466
+    "sha256": "151f60f8787a49fa943030d84d097e042da973ac60abe453fad3d51f491e0e6d",
+    "size": 36463
   }
 }
