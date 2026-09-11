@@ -4,7 +4,7 @@
     "zh": "大模型斩杀线与智能选型",
     "en": "AI Model Kill-Zone & Selection"
   },
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": {
     "zh": "大模型选型（L层）性价比斩杀线推演与预算配置工作台。支持散点图斩杀线交互、多任务画像预算降级核算、自定义模型补录（Local-First存储）与AI选型架构师深度诊断报告生成。",
     "en": "LLM selection and kill-zone cost-efficiency workbench with interactive scatter chart, task-budget profiling, local-first model registry, and AI architect diagnosis."
@@ -28,9 +28,9 @@
     "url": "https://duzhilei951.github.io/ha-kill-zone/manifest.json"
   },
   "package": {
-    "url": "https://duzhilei951.github.io/ha-kill-zone/releases/1.2.0/ha-kill-zone.miniapp",
+    "url": "https://duzhilei951.github.io/ha-kill-zone/releases/1.2.1/ha-kill-zone.miniapp",
     "iconUrl": "https://duzhilei951.github.io/ha-kill-zone/icon.png",
-    "sha256": "56dcc00f823fb007b958612b6407e10a3788eae4f34654d8d9c9c52258a2a233",
-    "size": 35463
+    "sha256": "569a17fdab0b9095ed649c276a1e5f6f1985d4b49aa4d0f01164d71df2144f6b",
+    "size": 50000
   }
 }
