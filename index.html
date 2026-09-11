@@ -432,6 +432,10 @@ function renderChart() {
   var svg = document.getElementById('chart');
   if (!svg) return;
 
+  var ML = 78, MR = 40, MT = 46, MB = 56, W = 1120, H = 660;
+  var PW = W - ML - MR, PH = H - MT - MB;
+  var x_right = W - MR, y_bottom = H - MB;
+
   var prices = ROWS.map(function(p) { return p.price; }).filter(function(p) { return p > 0; });
   var xlo, xhi;
   if (prices.length > 0) {
@@ -441,7 +445,7 @@ function renderChart() {
     xlo = lo - Math.max((hi - lo) * 0.10, 0.10);
     xhi = hi + Math.max((hi - lo) * 0.10, 0.10);
   } else {
-    xlo = Math.log10(1); xhi = Math.log10(70);
+    xlo = -0.346; xhi = 2.024;
   }
 
   var px = function(c) { return ML + (Math.log10(c) - xlo) / (xhi - xlo) * PW; };
@@ -454,7 +458,7 @@ function renderChart() {
       break;
     }
   }
-  if (!anchor) anchor = ROWS[0];
+  if (!anchor && ROWS.length > 0) anchor = ROWS[0];
 
   var s0 = anchor ? anchor.score : 80.7;
   var c0 = anchor ? anchor.price : 5.03;
@@ -478,35 +482,32 @@ function renderChart() {
 
   Y_TICKS.forEach(function(t) {
     var y = py(t);
-    svgHtml += '<line x1="' + ML + '" y1="' + y.toFixed(2) + '" x2="' + (W - MR) + '" y2="' + y.toFixed(2) + '" stroke="rgba(148,163,184,0.10)" stroke-width="1"/>';
-    svgHtml += '<text x="' + (ML - 10) + '" y="' + (y + 4).toFixed(2) + '" class="axis">' + t + '</text>';
+    svgHtml += '<line x1="' + ML + '" y1="' + y.toFixed(2) + '" x2="' + x_right + '" y2="' + y.toFixed(2) + '" stroke="rgba(148,163,184,0.10)" stroke-width="1"/>';
+    svgHtml += '<text x="' + (ML - 10) + '" y="' + (y + 4).toFixed(2) + '" class="axis" text-anchor="end">' + t + '</text>';
   });
 
   X_TICKS.forEach(function(t) {
     var x = px(t);
-    if (x >= ML && x <= W - MR) {
-      svgHtml += '<line x1="' + x.toFixed(2) + '" y1="' + MT + '" x2="' + x.toFixed(2) + '" y2="' + (H - MB) + '" stroke="rgba(148,163,184,0.10)" stroke-width="1"/>';
-      svgHtml += '<text x="' + x.toFixed(2) + '" y="' + (H - MB + 18) + '" class="axis-x">¥' + t + '</text>';
+    if (x >= ML && x <= x_right) {
+      svgHtml += '<line x1="' + x.toFixed(2) + '" y1="' + MT + '" x2="' + x.toFixed(2) + '" y2="' + y_bottom + '" stroke="rgba(148,163,184,0.10)" stroke-width="1"/>';
+      svgHtml += '<text x="' + x.toFixed(2) + '" y="' + (y_bottom + 20) + '" class="axis-x" text-anchor="middle">¥' + t + '</text>';
     }
   });
 
-  var x_c0 = px(c0);
-  var y_s0 = py(s0);
-  var x_right = W - MR;
-  var y_bottom = H - MB;
+  svgHtml += '<line x1="' + ML + '" y1="' + y_bottom + '" x2="' + x_right + '" y2="' + y_bottom + '" stroke="#64748b" stroke-width="1.5"/>';
+  svgHtml += '<line x1="' + ML + '" y1="' + MT + '" x2="' + ML + '" y2="' + y_bottom + '" stroke="#64748b" stroke-width="1.5"/>';
 
-  if (x_c0 >= ML && x_c0 <= x_right && y_s0 >= MT && y_s0 <= y_bottom) {
-    var kw = x_right - x_c0;
-    var kh = y_bottom - y_s0;
-    svgHtml += '<rect x="' + x_c0.toFixed(2) + '" y="' + y_s0.toFixed(2) + '" width="' + kw.toFixed(2) + '" height="' + kh.toFixed(2) + '" fill="rgba(251,113,133,0.06)" clip-path="url(#plotclip)"/>';
-    var killPath = 'M ' + x_c0.toFixed(2) + ' ' + MT + ' V ' + y_s0.toFixed(2) + ' H ' + x_right.toFixed(2);
-    svgHtml += '<path d="' + killPath + '" stroke="#fb7185" stroke-width="2" stroke-dasharray="6,4" fill="none" clip-path="url(#plotclip)"/>';
-  }
+  var ax = px(c0);
+  var ay = py(s0);
 
-  svgHtml += '<text x="' + (ML + 14) + '" y="' + (MT + 24) + '" class="zone-watermark" fill="rgba(52,211,153,0.12)">C 安全区（高质低价）</text>' +
-    '<text x="' + (ML + 14) + '" y="' + (y_bottom - 16) + '" class="zone-watermark" fill="rgba(56,189,248,0.12)">B 走量区（极致成本）</text>' +
-    '<text x="' + (x_right - 14) + '" y="' + (MT + 24) + '" text-anchor="end" class="zone-watermark" fill="rgba(167,139,250,0.12)">D 旗舰区（极致能力）</text>' +
-    '<text x="' + (x_right - 14) + '" y="' + (y_bottom - 16) + '" text-anchor="end" class="zone-watermark" fill="rgba(251,113,133,0.15)">X 斩杀区（性价比劣势）</text>';
+  svgHtml += '<path d="M' + ax.toFixed(1) + ',' + ay.toFixed(1) + ' L' + x_right.toFixed(1) + ',' + ay.toFixed(1) + ' L' + x_right.toFixed(1) + ',' + y_bottom.toFixed(1) + ' L' + ax.toFixed(1) + ',' + y_bottom.toFixed(1) + ' Z" fill="rgba(248,113,113,0.06)" clip-path="url(#plotclip)"/>';
+  svgHtml += '<path d="M' + ax.toFixed(1) + ',' + ay.toFixed(1) + ' L' + x_right.toFixed(1) + ',' + ay.toFixed(1) + ' M' + ax.toFixed(1) + ',' + ay.toFixed(1) + ' L' + ax.toFixed(1) + ',' + y_bottom.toFixed(1) + '" fill="none" stroke="#fb7185" stroke-width="2.5" stroke-dasharray="8,5" stroke-linecap="round" clip-path="url(#plotclip)"/>';
+  svgHtml += '<text x="' + (ML + 12) + '" y="' + (MT + 18) + '" class="kill-line-label">斩杀线 ── 锚点右下方为斩杀区</text>';
+
+  svgHtml += '<text x="' + (ML + 16) + '" y="' + (MT + 36) + '" class="zone-watermark" fill="rgba(52,211,153,0.15)">C 安全区（高质低价）</text>' +
+    '<text x="' + (ML + 16) + '" y="' + (y_bottom - 20) + '" class="zone-watermark" fill="rgba(56,189,248,0.15)">B 走量区（极致成本）</text>' +
+    '<text x="' + (x_right - 16) + '" y="' + (MT + 36) + '" text-anchor="end" class="zone-watermark" fill="rgba(167,139,250,0.15)">D 旗舰区（极致能力）</text>' +
+    '<text x="' + (x_right - 16) + '" y="' + (y_bottom - 20) + '" text-anchor="end" class="zone-watermark" fill="rgba(251,113,133,0.18)">X 斩杀区（性价比劣势）</text>';
 
   ROWS.forEach(function(p, idx) {
     var x = px(p.price);
@@ -521,14 +522,16 @@ function renderChart() {
 
     var fill = ZONE_COLOR[z] || '#64748b';
     var isThisAnchor = anchor && (p.slug === anchor.slug || p.name === anchor.name);
-    var radius = isThisAnchor ? 9 : (p.custom ? 8 : 7);
+    var radius = isThisAnchor ? 8.5 : (p.custom ? 8 : 7);
     var stroke = isThisAnchor ? '#fbbf24' : (p.custom ? '#00e5ff' : 'none');
     var strokeW = isThisAnchor ? 2.5 : (p.custom ? 2 : 0);
 
-    svgHtml += '<circle data-i="' + idx + '" class="dot zone-' + z + ' ' + (isThisAnchor ? 'dot-anchor' : '') + '" cx="' + x.toFixed(2) + '" cy="' + y.toFixed(2) + '" r="' + radius + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + strokeW + '"/>';
+    svgHtml += '<circle data-i="' + idx + '" class="dot zone-' + z + ' ' + (isThisAnchor ? 'anchor' : '') + '" cx="' + x.toFixed(2) + '" cy="' + y.toFixed(2) + '" r="' + radius + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="' + strokeW + '"/>';
 
     if (isThisAnchor) {
-      svgHtml += '<text x="' + x.toFixed(2) + '" y="' + (y - 14).toFixed(2) + '" text-anchor="middle" class="anchor-star" fill="#fbbf24" font-size="14" font-weight="bold">★ 走量锚点</text>';
+      svgHtml += '<text x="' + x.toFixed(2) + '" y="' + (y - 16).toFixed(2) + '" text-anchor="middle" class="anchor-star">★</text>';
+      svgHtml += '<text x="' + x.toFixed(2) + '" y="' + (y + 26).toFixed(2) + '" text-anchor="middle" class="anchor-tag">锚点（走量基准）</text>';
+      svgHtml += '<text x="' + x.toFixed(2) + '" y="' + (y - 12).toFixed(2) + '" class="dot-label" text-anchor="middle">★ ' + esc(p.name) + '</text>';
     } else if (p.custom) {
       svgHtml += '<text x="' + x.toFixed(2) + '" y="' + (y - 12).toFixed(2) + '" text-anchor="middle" fill="#00e5ff" font-size="11" font-weight="600">★ ' + esc(p.name) + '</text>';
     }
@@ -935,41 +938,73 @@ function renderMarkdown(md) {
   const syncText = $('syncText');
 
   if (btnSync) {
-    btnSync.onclick = async () => {
+        btnSync.onclick = async () => {
       btnSync.disabled = true;
       syncIcon.style.display = 'inline-block';
       syncIcon.style.animation = 'spin 1s linear infinite';
-      syncText.textContent = '正在联网同步实时价格与最新模型...';
+      syncText.textContent = '正在全网拉取最新数据...';
 
       try {
         let fetchedCount = 0;
         let pricesMap = {};
         let fetchSuccess = false;
 
-        // 通道 1：尝试优先通过 Cherry Studio 注入的 network.fetch API
-        if (window.cherry && window.cherry.network && window.cherry.network.fetch) {
+        // 策略 1：调用 Cherry Studio 官方 network.fetch (参数形式为 { url })
+        if (window.cherry && window.cherry.network && typeof window.cherry.network.fetch === 'function') {
           try {
-            const res = await window.cherry.network.fetch('https://openrouter.ai/api/v1/models');
-            if (res && (res.ok || res.status === 200)) {
-              const data = typeof res.json === 'function' ? await res.json() : (typeof res.data === 'object' ? res.data : JSON.parse(res.body || '{}'));
+            console.log('Fetching via window.cherry.network.fetch...');
+            const res = await window.cherry.network.fetch({ url: 'https://openrouter.ai/api/v1/models' });
+            if (res) {
+              let textData = '';
+              if (typeof res.text === 'function') {
+                textData = await res.text();
+              } else if (res.body) {
+                // base64 decode if body is base64 string
+                try {
+                  textData = decodeURIComponent(escape(atob(res.body)));
+                } catch(e) {
+                  textData = atob(res.body);
+                }
+              }
+              const data = textData ? JSON.parse(textData) : (res.data || res);
               if (data && data.data && Array.isArray(data.data)) {
                 data.data.forEach(m => {
                   if (m.id && m.pricing) {
                     const inp = parseFloat(m.pricing.prompt) * 1000000 * 7.2;
                     const out = parseFloat(m.pricing.completion) * 1000000 * 7.2;
-                    pricesMap[m.id.toLowerCase()] = { inp, out };
+                    pricesMap[m.id.toLowerCase()] = { inp, out, name: m.name };
                   }
                 });
                 fetchedCount = data.data.length;
                 fetchSuccess = true;
+                console.log('Successfully fetched via window.cherry.network.fetch:', fetchedCount);
               }
             }
-          } catch(e) { console.warn('Cherry network.fetch failed:', e); }
+          } catch(e) {
+            console.warn('Cherry network.fetch object params failed:', e);
+            // 兼容尝试直接传 string url
+            try {
+              const res2 = await window.cherry.network.fetch('https://openrouter.ai/api/v1/models');
+              const data2 = typeof res2.json === 'function' ? await res2.json() : res2;
+              if (data2 && data2.data && Array.isArray(data2.data)) {
+                data2.data.forEach(m => {
+                  if (m.id && m.pricing) {
+                    const inp = parseFloat(m.pricing.prompt) * 1000000 * 7.2;
+                    const out = parseFloat(m.pricing.completion) * 1000000 * 7.2;
+                    pricesMap[m.id.toLowerCase()] = { inp, out, name: m.name };
+                  }
+                });
+                fetchedCount = data2.data.length;
+                fetchSuccess = true;
+              }
+            } catch(e2) { console.warn('Cherry network.fetch string params failed:', e2); }
+          }
         }
 
-        // 通道 2：如果宿主 API 未返回或未注入，自动降级到原生标准 fetch
+        // 策略 2：如果 Cherry network 未取到，回退标准 fetch
         if (!fetchSuccess && typeof window.fetch === 'function') {
           try {
+            console.log('Falling back to standard window.fetch...');
             const res = await window.fetch('https://openrouter.ai/api/v1/models', { mode: 'cors' });
             if (res && res.ok) {
               const data = await res.json();
@@ -978,17 +1013,18 @@ function renderMarkdown(md) {
                   if (m.id && m.pricing) {
                     const inp = parseFloat(m.pricing.prompt) * 1000000 * 7.2;
                     const out = parseFloat(m.pricing.completion) * 1000000 * 7.2;
-                    pricesMap[m.id.toLowerCase()] = { inp, out };
+                    pricesMap[m.id.toLowerCase()] = { inp, out, name: m.name };
                   }
                 });
                 fetchedCount = data.data.length;
                 fetchSuccess = true;
+                console.log('Successfully fetched via window.fetch:', fetchedCount);
               }
             }
           } catch(e) { console.warn('Native window.fetch failed:', e); }
         }
 
-        // 同步更新现有模型库中的实时价格
+        // 智能匹配与价格折算更新
         let updatedCount = 0;
         if (typeof ROWS !== 'undefined' && Array.isArray(ROWS)) {
           ROWS.forEach(row => {
@@ -1016,24 +1052,25 @@ function renderMarkdown(md) {
           });
         }
 
-        // 重新执行推荐计算与图谱刷新
+        // 实时动态重绘全盘视图并落盘缓存
         saveRowsToStorage();
         renderAll();
         if (typeof runRec === 'function') runRec();
 
         if (fetchSuccess) {
-          alert('✅ 全网最新大盘同步成功！\n\n• 实时在线大模型：' + fetchedCount + ' 款\n• 成功更新大盘匹配模型价格：' + updatedCount + ' 款\n• 帕累托锚点与斩杀线已实时重新演化推导！');
+          alert('同步完成：抓取到 ' + fetchedCount + ' 款，更新 ' + updatedCount + ' 款！');
         } else {
-          alert('⚠️ 网络未能直连 OpenRouter 实时接口，已为您启用内建高精度大盘基准数据重新推演！');
+          alert('⚠️ 获取在线数据失败，已保持当前大盘数据不变。请检查网络后重试。');
         }
       } catch(err) {
-        alert('同步提示: ' + err.message + '，已为您保留当前最新高精度大盘基线！');
+        alert('同步失败: ' + err.message + '，请稍后再试。');
       } finally {
         btnSync.disabled = false;
         syncIcon.style.animation = 'none';
-        syncText.textContent = '实时刷新最新大盘';
+        syncText.textContent = '实时同步大盘';
       }
     };
+
   }
 
   // 2. 顾问抽屉打开/关闭
