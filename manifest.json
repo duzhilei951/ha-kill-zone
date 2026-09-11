@@ -16,6 +16,7 @@
   "entry": "index.html",
   "permissions": [
     "ai.chat",
+    "network.*",
     "storage.*",
     "clipboard.write",
     "notification.show"

@@ -244,6 +244,40 @@
   }
   .quick-q-btn:hover { background: rgba(255,255,255,.12); }
 
+  /* Markdown 排版样式 */
+  .chat-msg h1, .chat-msg h2, .chat-msg h3, .chat-msg h4 {
+    margin: 8px 0 4px 0; font-weight: 700; color: #f8fafc;
+  }
+  .chat-msg h1 { font-size: 15px; }
+  .chat-msg h2 { font-size: 14px; }
+  .chat-msg h3, .chat-msg h4 { font-size: 13px; }
+  .chat-msg p { margin: 4px 0 6px 0; }
+  .chat-msg p:last-child { margin-bottom: 0; }
+  .chat-msg ul, .chat-msg ol {
+    margin: 4px 0 6px 0; padding-left: 20px;
+  }
+  .chat-msg li { margin: 2px 0; }
+  .chat-msg strong { color: #60a5fa; font-weight: 600; }
+  .chat-msg em { font-style: italic; color: #cbd5e1; }
+  .chat-msg blockquote {
+    margin: 6px 0; padding: 6px 12px; background: rgba(59,130,246,0.1);
+    border-left: 3px solid #3b82f6; border-radius: 0 6px 6px 0; color: #cbd5e1;
+  }
+  .chat-code-inline {
+    background: rgba(15,23,42,0.8); padding: 2px 5px; border-radius: 4px;
+    font-family: Consolas, Monaco, monospace; font-size: 12px; color: #38bdf8;
+    border: 1px solid rgba(148,163,184,0.2);
+  }
+  .chat-code-block {
+    margin: 8px 0; padding: 10px 12px; background: #0b1120; border: 1px solid rgba(148,163,184,0.2);
+    border-radius: 8px; overflow-x: auto; font-family: Consolas, Monaco, monospace;
+    font-size: 12px; line-height: 1.5; color: #e2e8f0;
+  }
+  .chat-code-block code { background: transparent; padding: 0; border: none; }
+  .chat-md-hr {
+    border: none; border-top: 1px solid rgba(148,163,184,0.2); margin: 8px 0;
+  }
+
 </style>
 </head>
 <body>
@@ -1373,6 +1407,70 @@ const PROFILE = null;
 
 <script>
 // ==========================================
+// 轻量级 Markdown 渲染器（支持标题、列表、加粗、引用、代码高亮等）
+// ==========================================
+function renderMarkdown(md) {
+  if (!md) return '';
+  let str = String(md);
+
+  // 转义基础 HTML 字符
+  str = str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // 1. 多行代码块 ```lang ... ```
+  const codeBlocks = [];
+  str = str.replace(/```([a-zA-Z0-9_-]*)\n?([\s\S]*?)```/g, function(match, lang, code) {
+    const placeholder = '___CODEBLOCK_' + codeBlocks.length + '___';
+    codeBlocks.push('<pre class="chat-code-block"><code>' + code.trim() + '</code></pre>');
+    return placeholder;
+  });
+
+  // 2. 行内代码 `code`
+  str = str.replace(/`([^`\n]+)`/g, '<code class="chat-code-inline">$1</code>');
+
+  // 3. 分隔线 --- / ***
+  str = str.replace(/^(\s*[-*_]\s*){3,}$/gm, '<hr class="chat-md-hr"/>');
+
+  // 4. 标题 # ~ ####
+  str = str.replace(/^#### (.*?)$/gm, '<h4>$1</h4>');
+  str = str.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
+  str = str.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
+  str = str.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
+
+  // 5. 引用块 > quote
+  str = str.replace(/^> (.*?)$/gm, '<blockquote>$1</blockquote>');
+
+  // 6. 加粗与斜体
+  str = str.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
+  str = str.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  str = str.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+  str = str.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+  str = str.replace(/_([^_\n]+)_/g, '<em>$1</em>');
+
+  // 7. 无序列表与有序列表
+  str = str.replace(/^\s*[-*+]\s+(.*?)$/gm, '<li>$1</li>');
+  str = str.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+  str = str.replace(/^\s*(\d+)\.\s+(.*?)$/gm, '<li>$2</li>');
+
+  // 8. 段落换行（连续两个换行转为段落，单个换行转为 br）
+  const parts = str.split(/\n\n+/);
+  str = parts.map(function(p) {
+    p = p.trim();
+    if (!p) return '';
+    if (/^<(h[1-4]|pre|ul|ol|blockquote|hr)/.test(p) || p.startsWith('___CODEBLOCK_')) {
+      return p;
+    }
+    return '<p>' + p.replace(/\n/g, '<br/>') + '</p>';
+  }).join('');
+
+  // 9. 还原代码块
+  codeBlocks.forEach(function(block, idx) {
+    str = str.replace('___CODEBLOCK_' + idx + '___', block);
+  });
+
+  return str;
+}
+
+// ==========================================
 // Cherry Studio MiniApp 增强逻辑
 // ==========================================
 (function() {
@@ -1401,14 +1499,15 @@ const PROFILE = null;
       try {
         let fetchedCount = 0;
         let pricesMap = {};
+        let fetchSuccess = false;
 
-        // 尝试通过 window.cherry.network 获取实时数据
+        // 通道 1：尝试优先通过 Cherry Studio 注入的 network.fetch API
         if (window.cherry && window.cherry.network && window.cherry.network.fetch) {
           try {
             const res = await window.cherry.network.fetch('https://openrouter.ai/api/v1/models');
-            if (res.ok) {
-              const data = await res.json();
-              if (data && data.data) {
+            if (res && (res.ok || res.status === 200)) {
+              const data = typeof res.json === 'function' ? await res.json() : (typeof res.data === 'object' ? res.data : JSON.parse(res.body || '{}'));
+              if (data && data.data && Array.isArray(data.data)) {
                 data.data.forEach(m => {
                   if (m.id && m.pricing) {
                     const inp = parseFloat(m.pricing.prompt) * 1000000 * 7.2;
@@ -1417,19 +1516,41 @@ const PROFILE = null;
                   }
                 });
                 fetchedCount = data.data.length;
+                fetchSuccess = true;
               }
             }
-          } catch(e) { console.warn('OpenRouter fetch failed:', e); }
+          } catch(e) { console.warn('Cherry network.fetch failed:', e); }
+        }
+
+        // 通道 2：如果宿主 API 未返回或未注入，自动降级到原生标准 fetch
+        if (!fetchSuccess && typeof window.fetch === 'function') {
+          try {
+            const res = await window.fetch('https://openrouter.ai/api/v1/models', { mode: 'cors' });
+            if (res && res.ok) {
+              const data = await res.json();
+              if (data && data.data && Array.isArray(data.data)) {
+                data.data.forEach(m => {
+                  if (m.id && m.pricing) {
+                    const inp = parseFloat(m.pricing.prompt) * 1000000 * 7.2;
+                    const out = parseFloat(m.pricing.completion) * 1000000 * 7.2;
+                    pricesMap[m.id.toLowerCase()] = { inp, out };
+                  }
+                });
+                fetchedCount = data.data.length;
+                fetchSuccess = true;
+              }
+            }
+          } catch(e) { console.warn('Native window.fetch failed:', e); }
         }
 
         // 同步更新现有模型库中的实时价格
         let updatedCount = 0;
-        if (typeof ROWS !== 'undefined') {
+        if (typeof ROWS !== 'undefined' && Array.isArray(ROWS)) {
           ROWS.forEach(row => {
-            // 匹配模型并动态刷新其最新价格
             const slug = (row.slug || '').toLowerCase();
+            const name = (row.name || '').toLowerCase();
             for (const [key, p] of Object.entries(pricesMap)) {
-              if (key.includes(slug) || slug.includes(key)) {
+              if (key.includes(slug) || (slug && slug.includes(key)) || key.includes(name) || (name && name.includes(key))) {
                 if (p.inp > 0) {
                   row.price = parseFloat(p.inp.toFixed(2));
                   row.priceOut = parseFloat(p.out.toFixed(2));
@@ -1442,10 +1563,14 @@ const PROFILE = null;
           });
         }
 
-        // 重新执行推荐计算与重绘
+        // 重新执行推荐计算与图谱刷新
         if (typeof runRec === 'function') runRec();
 
-        alert('✅ 全网最新大盘同步成功！\n\n• 检索到实时模型: ' + (fetchedCount || '300+') + ' 个\n• 动态更新当前大盘价格与斩杀线参数\n• 斩杀线已实时根据最新市场行情重新推演！');
+        if (fetchSuccess) {
+          alert('✅ 全网最新大盘同步成功！\n\n• 实时在线大模型：' + fetchedCount + ' 款\n• 成功更新大盘匹配模型价格：' + updatedCount + ' 款\n• 帕累托锚点与斩杀线已实时重新演化推导！');
+        } else {
+          alert('⚠️ 网络未能直连 OpenRouter 实时接口，已为您启用内建高精度大盘基准数据重新推演！');
+        }
       } catch(err) {
         alert('同步提示: ' + err.message + '，已为您保留当前最新高精度大盘基线！');
       } finally {
@@ -1632,14 +1757,15 @@ ${topModels}
         }, {
           onChunk: (c) => {
             fullReply += c;
-            aiMsg.innerHTML = fullReply.replace(/\n/g, '<br/>');
+            aiMsg.innerHTML = renderMarkdown(fullReply);
             msgList.scrollTop = msgList.scrollHeight;
           }
         });
+        aiMsg.innerHTML = renderMarkdown(fullReply);
       } else {
         await new Promise(r => setTimeout(r, 1000));
-        fullReply = `【建议配置方案】\n针对您的需求，推荐采用“双模阶梯架构”：\n1. **走量清洗与初步归纳**：选用 **MiniMax-ABAB 6.5s** 或 **Qwen 3.8 Flash Next**（输入仅1元/M，成本极低，处于B区走量首选）；\n2. **深度推理与终审把关**：选用 **Gemini 3.8 Flash** 或 **MiniMax-abab 7**（处于C区安全性价比基座，能力均在80分以上，完全胜任复杂合同条款逻辑）；\n3. **综合月度支出测算**：按中度使用（每月2500万tokens，80%走量+20%终审），预计月支出约 38~55 元，远低于百元预算上限，且杜绝任何高价斩杀区模型的算力浪费！`;
-        aiMsg.innerHTML = fullReply.replace(/\n/g, '<br/>');
+        fullReply = `### 💡 建议配置方案\n针对您的业务需求，建议采用**双模阶梯架构**：\n\n1. **走量清洗与初步归纳**：选用 **MiniMax-ABAB 6.5s** 或 **Qwen 3.8 Flash Next**\n   - 输入价格低至 **¥1.00/M tokens**，位于大盘走量最适宜的 B 区；\n2. **深度推理与终审把关**：选用 **Gemini 3.8 Flash** 或 **MiniMax-abab 7**\n   - 处于 C 区安全性价比基座，AIHOT 综合能力评分达 **80分以上**，严防逻辑漏洞；\n3. **综合月度支出测算**：\n   - 按中度使用（每月约 2500 万 tokens，80% 走量 + 20% 终审）；\n   - 预计实际月度支出仅约 **¥38 ~ ¥55**，大幅节约成本并斩断溢价！`;
+        aiMsg.innerHTML = renderMarkdown(fullReply);
         msgList.scrollTop = msgList.scrollHeight;
       }
     } catch (e) {
