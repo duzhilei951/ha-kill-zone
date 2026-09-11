@@ -4,7 +4,7 @@
     "zh": "大模型斩杀线与智能选型",
     "en": "AI Model Kill-Zone & Selection"
   },
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": {
     "zh": "大模型选型（L层）性价比斩杀线推演与预算配置工作台。支持散点图斩杀线交互、多任务画像预算降级核算、自定义模型补录（Local-First存储）与AI选型架构师深度诊断报告生成。",
     "en": "LLM selection and kill-zone cost-efficiency workbench with interactive scatter chart, task-budget profiling, local-first model registry, and AI architect diagnosis."
@@ -21,16 +21,16 @@
     "notification.show"
   ],
   "releaseNotes": {
-    "zh": "首发版本发布。集成37款主流大模型跑分与价格数据，支持散点图斩杀线交互定位、任务画像智能规划与预算核算、手动补录新模型并持久化保存、以及一键呼叫AI架构师生成专属选型诊断报告。",
-    "en": "Initial release with 37 LLMs cost-efficiency scatter chart, interactive kill-zone deduction, task-budget profiling, local-first model registration, and AI architect diagnosis."
+    "zh": "重磅更新v1.1.0：1. 新增AI智能发版新闻解析录入，复制推文自动提取指标上图；2. 动态帕累托锚点与斩杀线演算；3. 新增选型首席顾问多轮互动对谈区；4. 重点关注四类动态信号看板。",
+    "en": "v1.1.0 Major Update: 1. AI news auto-parser to extract LLM specs; 2. Dynamic Pareto anchor calculation; 3. Interactive AI architect consultation chat; 4. Key observation signals board."
   },
   "update": {
     "url": "https://duzhilei951.github.io/ha-kill-zone/manifest.json"
   },
   "package": {
-    "url": "https://duzhilei951.github.io/ha-kill-zone/releases/1.0.0/ha-kill-zone.miniapp",
+    "url": "https://duzhilei951.github.io/ha-kill-zone/releases/1.1.0/ha-kill-zone.miniapp",
     "iconUrl": "https://duzhilei951.github.io/ha-kill-zone/icon.png",
-    "sha256": "55569a5dbf54fc37418858c6a6ec3fb32886ab313e2b4a31bccf316bb2adc033",
-    "size": 28138
+    "sha256": "7479279b57e9409ee2cf33ea8d416b9369176c64724fdbf5ad29a23cc4c5b52d",
+    "size": 28620
   }
 }
