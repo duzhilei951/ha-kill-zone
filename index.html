@@ -366,7 +366,19 @@
         <span style="font-size:18px;">💬</span>
         <span style="font-weight:700; color:#f8fafc;">大模型选型首席顾问</span>
       </div>
-      <button class="modal-close" id="btnCloseDrawer">&times;</button>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button id="btnToggleAdvisorHistory" style="padding:4px 10px; font-size:12px; border-radius:6px; border:1px solid rgba(148,163,184,0.25); background:rgba(30,41,59,0.8); color:#38bdf8; cursor:pointer; display:flex; align-items:center; gap:4px;" title="查看已沉淀的历史选型方案">
+          <span>📂 方案档案</span>
+        </button>
+        <button class="modal-close" id="btnCloseDrawer">&times;</button>
+      </div>
+    </div>
+    <div id="advisorHistoryPanel" style="display:none; padding:12px; background:rgba(15,23,42,0.95); border-bottom:1px solid rgba(148,163,184,0.15); max-height:220px; overflow-y:auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span style="font-size:12px; font-weight:600; color:#cbd5e1;">📜 过往咨询与选型方案</span>
+        <button id="btnClearAdvisorHistory" style="font-size:11px; background:none; border:none; color:#ef4444; cursor:pointer;">清空记录</button>
+      </div>
+      <div id="advisorHistoryItems" style="display:flex; flex-direction:column; gap:6px; font-size:12px;"></div>
     </div>
     <div class="drawer-body" id="chatMsgList">
       <div class="chat-msg assistant">
@@ -1260,10 +1272,116 @@ ${topModels}
         aiMsg.innerHTML = renderMarkdown(fullReply);
         msgList.scrollTop = msgList.scrollHeight;
       }
+
+      // 自动沉淀至双轨持久化历史
+      await saveAdvisorHistoryItem({
+        id: 'kz_' + Date.now(),
+        time: new Date().toLocaleString(),
+        q: text,
+        reply: fullReply
+      });
+
     } catch (e) {
       aiMsg.innerHTML = '<span style="color:#ef4444;">咨询接口调用异常：' + e.message + '</span>';
     }
   };
+
+  // ===== 选型方案持久化双轨存储管理 =====
+  async function getAdvisorHistory() {
+    try {
+      if (window.cherry && window.cherry.storage && window.cherry.storage.get) {
+        const res = await window.cherry.storage.get('ha_killzone_advisor_history');
+        const raw = (res && typeof res === 'object' && 'value' in res) ? res.value : res;
+        if (raw) return JSON.parse(raw);
+      }
+    } catch(e) {}
+    try {
+      return JSON.parse(localStorage.getItem('ha_killzone_advisor_history') || '[]');
+    } catch(e) { return []; }
+  }
+
+  async function saveAdvisorHistoryItem(item) {
+    const list = await getAdvisorHistory();
+    list.unshift(item);
+    if (list.length > 30) list.pop();
+    const str = JSON.stringify(list);
+    try {
+      if (window.cherry && window.cherry.storage && window.cherry.storage.set) {
+        await window.cherry.storage.set('ha_killzone_advisor_history', str);
+      }
+    } catch(e) {}
+    try {
+      localStorage.setItem('ha_killzone_advisor_history', str);
+    } catch(e) {}
+    renderAdvisorHistoryList();
+  }
+
+  async function renderAdvisorHistoryList() {
+    const container = $('advisorHistoryItems');
+    if (!container) return;
+    const list = await getAdvisorHistory();
+    if (list.length === 0) {
+      container.innerHTML = '<div style="color:#64748b; padding:8px 0; text-align:center;">暂无已保存的方案</div>';
+      return;
+    }
+    container.innerHTML = list.map((item, idx) => `
+      <div style="padding:6px 8px; background:rgba(30,41,59,0.7); border-radius:4px; border:1px solid rgba(148,163,184,0.1); cursor:pointer;" onclick="restoreAdvisorHistory(${idx})">
+        <div style="font-weight:600; color:#38bdf8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">👉 ${esc(item.q)}</div>
+        <div style="font-size:10px; color:#64748b; margin-top:2px;">${item.time}</div>
+      </div>
+    `).join('');
+  }
+
+  window.restoreAdvisorHistory = async function(idx) {
+    const list = await getAdvisorHistory();
+    const item = list[idx];
+    if (!item) return;
+    const msgList = $('chatMsgList');
+    if (!msgList) return;
+
+    // 添加到聊天面板
+    const userMsg = document.createElement('div');
+    userMsg.className = 'chat-msg user';
+    userMsg.textContent = item.q;
+    msgList.appendChild(userMsg);
+
+    const aiMsg = document.createElement('div');
+    aiMsg.className = 'chat-msg assistant';
+    aiMsg.innerHTML = renderMarkdown(item.reply);
+    msgList.appendChild(aiMsg);
+    msgList.scrollTop = msgList.scrollHeight;
+
+    // 收起历史面板
+    const panel = $('advisorHistoryPanel');
+    if (panel) panel.style.display = 'none';
+  };
+
+  const btnToggleHistory = $('btnToggleAdvisorHistory');
+  if (btnToggleHistory) {
+    btnToggleHistory.onclick = () => {
+      const panel = $('advisorHistoryPanel');
+      if (panel) {
+        const isShow = panel.style.display === 'block';
+        panel.style.display = isShow ? 'none' : 'block';
+        if (!isShow) renderAdvisorHistoryList();
+      }
+    };
+  }
+
+  const btnClearHistory = $('btnClearAdvisorHistory');
+  if (btnClearHistory) {
+    btnClearHistory.onclick = async () => {
+      if (confirm('确认清空所有历史咨询方案吗？')) {
+        try {
+          if (window.cherry && window.cherry.storage && window.cherry.storage.delete) {
+            await window.cherry.storage.delete('ha_killzone_advisor_history');
+          }
+        } catch(e) {}
+        try { localStorage.removeItem('ha_killzone_advisor_history'); } catch(e) {}
+        renderAdvisorHistoryList();
+      }
+    };
+  }
 
   renderAll();
 })();
