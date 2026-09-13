@@ -4,7 +4,7 @@
     "zh": "大模型斩杀线与智能选型",
     "en": "AI Model Kill-Zone & Selection"
   },
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": {
     "zh": "大模型性价比斩杀线推演工作台。提供96vw黄金比例全屏对数散点图、一键全网实时同步（OpenRouter/Models.dev）、AI发版推文智能解析、动态帕累托红线计算以及右侧抽屉式选型首席顾问多轮互动。",
     "en": "AI model kill-zone and selection workbench with real-time sync, dynamic pareto frontier, and advisor chat."
@@ -26,16 +26,16 @@
     "models.dev"
   ],
   "update": {
-    "url": "https://duzhilei951.github.io/ha-kill-zone/manifest.json?v=2.2.0"
+    "url": "https://duzhilei951.github.io/ha-kill-zone/manifest.json"
   },
   "package": {
-    "url": "https://duzhilei951.github.io/ha-kill-zone/releases/2.2.1/ha-kill-zone.miniapp",
+    "url": "https://duzhilei951.github.io/ha-kill-zone/releases/2.2.2/ha-kill-zone.miniapp",
     "iconUrl": "https://duzhilei951.github.io/ha-kill-zone/icon.png",
-    "sha256": "66783ac7163103375c499ad880735e7a3ca3b91771ac14a13b0638b78f5fe98d",
-    "size": 40723
+    "sha256": "076a72e42e9afc3a555ab5232aae21cbf11f8dbd9277aebcd9f2c934a94535cb",
+    "size": 40700
   },
   "releaseNotes": {
-    "zh": "v2.2.1: 接入 Cherry.storage 持久化双轨存储，新增选型方案历史归档抽屉；彻底解决 CDN Gzip 负压缩膨胀隐患。",
-    "en": "v2.2.1: Added persistent advisor history drawer via Cherry.storage and resolved CDN gzip inflation."
+    "zh": "v2.2.2: v2.2.2: 规范更新地址为无参数标准形式，确保客户端更新检查稳定生效。",
+    "en": "v2.2.2: Normalized the update URL to the canonical query-free form so client update checks resolve reliably."
   }
 }
